@@ -35,7 +35,9 @@ export const AdminDashboard: React.FC = () => {
           adminService.getSales(),
           adminService.getProducts()
         ]);
-        setSales(salesData || []);
+        // Only include items of type 'sale' to avoid double counting with full orders in the same collection
+        const filteredSales = (salesData || []).filter((s: any) => s.type === 'sale' || (!s.type && s.productId));
+        setSales(filteredSales);
         setProducts(productsData || []);
       } catch (error) {
         console.error(error);

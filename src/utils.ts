@@ -121,8 +121,9 @@ export const generateWhatsAppLink = (cart: CartItem[], order: OrderData, total: 
   message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
   message += `Olá! Acabei de fazer esse pedido pelo site e gostaria de prosseguir com o pagamento.`;
 
+  const phone = "5511948626304";
   const encodedMessage = encodeURIComponent(message);
-  return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
+  return `https://wa.me/${phone}?text=${encodedMessage}`;
 };
 
 export const getAutoDescription = (_productName: string, category: string) => {

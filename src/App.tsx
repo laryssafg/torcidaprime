@@ -1052,58 +1052,65 @@ function CheckoutModal({
       return;
     }
 
-    try {
-      // Prepare full order data
-      const orderToSave = {
-        cliente: {
-          nome: formData.customer.name,
-          whatsapp: formData.customer.whatsapp,
-          email: formData.customer.email
-        },
-        endereco: {
-          cep: formData.address.cep,
-          rua: formData.address.street,
-          numero: formData.address.number,
-          complemento: formData.address.complement || '',
-          bairro: formData.address.neighborhood,
-          cidade: formData.address.city,
-          estado: formData.address.state
-        },
-        entrega: formData.shipping,
-        formaPagamento: formData.payment,
-        itens: cart.map(item => ({
-          productId: item.product.id,
-          productName: item.product.name,
-          quantity: item.quantity,
-          price: item.product.price,
-          selectedSize: item.selectedSize,
-          personalization: item.personalization
-        })),
-        subtotal: total + discount,
-        desconto: discount,
-        cupom: coupon || null,
-        total: total
-      };
+    const orderToSave = {
+      cliente: {
+        nome: formData.customer.name,
+        whatsapp: formData.customer.whatsapp,
+        email: formData.customer.email
+      },
+      endereco: {
+        cep: formData.address.cep,
+        rua: formData.address.street,
+        numero: formData.address.number,
+        complemento: formData.address.complement || '',
+        bairro: formData.address.neighborhood,
+        cidade: formData.address.city,
+        estado: formData.address.state
+      },
+      entrega: formData.shipping,
+      formaPagamento: formData.payment,
+      itens: cart.map(item => ({
+        productId: item.product.id,
+        productName: item.product.name,
+        quantity: item.quantity,
+        price: item.product.price,
+        selectedSize: item.selectedSize,
+        personalization: item.personalization
+      })),
+      subtotal: total + discount,
+      desconto: discount,
+      cupom: coupon || null,
+      total: total
+    };
 
+    const orderDataWithCoupon: OrderData = {
+      ...formData,
+      coupon: coupon || undefined,
+      discountAmount: discount
+    };
+
+    const link = generateWhatsAppLink(cart, orderDataWithCoupon, total);
+
+    try {
+      console.log("Pedido enviado ao Firestore:", orderToSave);
+      
       // Create Order in Firestore
       await adminService.createOrder(orderToSave);
 
-      // Record item-level sales for dashboard as well (optional but good for compatibility with existing dashboard)
+      // Record item-level sales for dashboard
       await adminService.recordSale(cart, coupon || null, discount);
 
-      const orderDataWithCoupon: OrderData = {
-        ...formData,
-        coupon: coupon || undefined,
-        discountAmount: discount
-      };
-
-      const link = generateWhatsAppLink(cart, orderDataWithCoupon, total);
+      // Open WhatsApp after successful save
       window.open(link, '_blank');
       onSuccess();
       onClose();
-    } catch (error) {
-      console.error(error);
-      alert('Não foi possível finalizar seu pedido. Tente novamente ou finalize seu pedido pelo WhatsApp (11) 94862-6304');
+    } catch (error: any) {
+      console.error("Erro ao salvar pedido:", error.code, error.message, error);
+      
+      // FALLBACK: Still open WhatsApp even if Firestore fails
+      window.open(link, '_blank');
+      onSuccess();
+      onClose();
     }
   };
 

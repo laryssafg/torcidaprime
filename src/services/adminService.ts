@@ -53,6 +53,20 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
   throw new Error(JSON.stringify(errInfo));
 }
 
+const cleanUndefined = (obj: any): any => {
+  if (Array.isArray(obj)) {
+    return obj.map(cleanUndefined);
+  } else if (obj !== null && typeof obj === 'object' && !(obj instanceof Timestamp)) {
+    return Object.entries(obj).reduce((acc, [key, value]) => {
+      if (value !== undefined) {
+        acc[key] = cleanUndefined(value);
+      }
+      return acc;
+    }, {} as any);
+  }
+  return obj;
+};
+
 export const adminService = {
   // Products
   async getProducts() {
@@ -69,12 +83,12 @@ export const adminService = {
   async addProduct(product: Omit<Product, 'id'>) {
     const path = 'produtos';
     try {
-      const docRef = await addDoc(collection(db, path), {
+      const docRef = await addDoc(collection(db, path), cleanUndefined({
         ...product,
         salesCount: 0,
         totalRevenue: 0,
         updatedAt: Timestamp.now(),
-      });
+      }));
       return docRef.id;
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, path);
@@ -85,10 +99,10 @@ export const adminService = {
     const path = `produtos/${id}`;
     try {
       const docRef = doc(db, 'produtos', id);
-      await updateDoc(docRef, {
+      await updateDoc(docRef, cleanUndefined({
         ...data,
         updatedAt: Timestamp.now(),
-      });
+      }));
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, path);
     }
@@ -145,11 +159,11 @@ export const adminService = {
         const productPrice = item.product?.price || 0;
         const productName = item.product?.name || 'Produto Indefinido';
         const itemTotal = (productPrice + (item.personalization?.additionalPrice || 0)) * item.quantity;
-        const discountShare = (itemTotal / (discountAmount + 0.1)) * discountAmount; 
         
         const liquidProfit = (productPrice * 0.5) - (discountAmount / cart.length);
 
-        return addDoc(collection(db, path), {
+        const saleData = cleanUndefined({
+          type: 'sale',
           date: Timestamp.now(),
           productId: item.product?.id || 'unknown',
           productName,
@@ -158,8 +172,11 @@ export const adminService = {
           category: item.product?.category || 'Geral',
           couponCode: couponCode || null,
           discountAmount: discountAmount / cart.length,
-          liquidProfit: liquidProfit * item.quantity
+          liquidProfit: liquidProfit * item.quantity,
+          personalization: item.personalization
         });
+
+        return addDoc(collection(db, path), saleData);
       });
 
       // Also update product salesCount
@@ -194,11 +211,13 @@ export const adminService = {
   async createOrder(order: any) {
     const path = 'pedidos';
     try {
-      const docRef = await addDoc(collection(db, path), {
+      const orderData = cleanUndefined({
         ...order,
+        type: 'order',
         status: 'novo',
         criadoEm: serverTimestamp()
       });
+      const docRef = await addDoc(collection(db, path), orderData);
       return docRef.id;
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, path);
