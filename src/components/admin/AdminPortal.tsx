@@ -10,15 +10,19 @@ import {
   LogOut, 
   Menu, 
   X,
-  ChevronRight
+  ChevronRight,
+  ClipboardList,
+  Users
 } from 'lucide-react';
 import { AdminDashboard } from './AdminDashboard';
 import { ProductManagement } from './ProductManagement';
 import { AddProductForm } from './AddProductForm';
 import { CouponManagement } from './CouponManagement';
+import { SalesManagement } from './SalesManagement';
+import { CustomerManagement } from './CustomerManagement';
 import { motion, AnimatePresence } from 'motion/react';
 
-type Tab = 'dashboard' | 'new-product' | 'products' | 'coupons' | 'settings';
+type Tab = 'dashboard' | 'sales' | 'customers' | 'new-product' | 'products' | 'coupons' | 'settings';
 
 export const AdminPortal: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
@@ -28,6 +32,8 @@ export const AdminPortal: React.FC = () => {
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'sales', label: 'Vendas', icon: ClipboardList },
+    { id: 'customers', label: 'Clientes', icon: Users },
     { id: 'new-product', label: 'Novo Produto', icon: PlusCircle },
     { id: 'products', label: 'Produtos', icon: ShoppingBag },
     { id: 'coupons', label: 'Cupons', icon: Ticket },
@@ -117,6 +123,8 @@ export const AdminPortal: React.FC = () => {
               transition={{ duration: 0.2 }}
             >
               {activeTab === 'dashboard' && <AdminDashboard />}
+              {activeTab === 'sales' && <SalesManagement />}
+              {activeTab === 'customers' && <CustomerManagement />}
               {activeTab === 'products' && <ProductManagement />}
               {activeTab === 'new-product' && <AddProductForm onSuccess={() => setActiveTab('products')} />}
               {activeTab === 'coupons' && <CouponManagement />}

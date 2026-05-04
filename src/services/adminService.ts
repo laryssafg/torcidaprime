@@ -181,14 +181,51 @@ export const adminService = {
 
       // Also update product salesCount
       const updatePromises = cart.map(async (item) => {
-        const productRef = doc(db, 'produtos', item.product.id);
-        const productSnap = await getDoc(productRef);
-        if (productSnap.exists()) {
-          const currentData = productSnap.data();
-          await updateDoc(productRef, {
-            salesCount: (currentData.salesCount || 0) + item.quantity,
-            totalRevenue: (currentData.totalRevenue || 0) + (item.product.price * item.quantity)
-          });
+        if (!item.product.id || item.product.id === 'unknown') {
+          console.warn('⚠️ Produto sem ID detectado no registro de venda:', item.product.name);
+          return;
+        }
+
+        try {
+          const productRef = doc(db, 'produtos', item.product.id);
+          const productSnap = await getDoc(productRef);
+          
+          if (productSnap.exists()) {
+            const currentData = productSnap.data();
+            const currentSales = Number(currentData.salesCount || 0);
+            const currentRevenue = Number(currentData.totalRevenue || 0);
+            const itemRevenue = Number(item.product.price * item.quantity);
+            
+            console.log(`📊 Atualizando stats do produto: ${item.product.name}`, {
+              fromSales: currentSales,
+              toSales: currentSales + item.quantity,
+              fromRevenue: currentRevenue,
+              toRevenue: currentRevenue + itemRevenue
+            });
+
+            await updateDoc(productRef, {
+              salesCount: currentSales + item.quantity,
+              totalRevenue: currentRevenue + itemRevenue,
+              updatedAt: Timestamp.now()
+            });
+          } else {
+            console.error(`❌ Produto não encontrado no Firestore para atualizar stats: ${item.product.id} (${item.product.name})`);
+            // Attempt to find by name as fallback
+            const q = query(collection(db, 'produtos'), where('name', '==', item.product.name));
+            const fallbackSnap = await getDocs(q);
+            if (!fallbackSnap.empty) {
+              const fallbackDoc = fallbackSnap.docs[0];
+              const currentData = fallbackDoc.data();
+              console.log(`🔍 Fallback: Encontrado produto pelo nome: ${fallbackDoc.id}`);
+              await updateDoc(doc(db, 'produtos', fallbackDoc.id), {
+                salesCount: (Number(currentData.salesCount || 0)) + item.quantity,
+                totalRevenue: (Number(currentData.totalRevenue || 0)) + (item.product.price * item.quantity),
+                updatedAt: Timestamp.now()
+              });
+            }
+          }
+        } catch (err) {
+          console.error(`❌ Erro crítico ao atualizar stats do produto ${item.product.id}:`, err);
         }
       });
 
