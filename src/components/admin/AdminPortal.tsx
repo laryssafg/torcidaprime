@@ -20,6 +20,7 @@ import { AddProductForm } from './AddProductForm';
 import { CouponManagement } from './CouponManagement';
 import { SalesManagement } from './SalesManagement';
 import { CustomerManagement } from './CustomerManagement';
+import { ErrorBoundary } from './ErrorBoundary';
 import { motion, AnimatePresence } from 'motion/react';
 
 type Tab = 'dashboard' | 'sales' | 'customers' | 'new-product' | 'products' | 'coupons' | 'settings';
@@ -122,18 +123,20 @@ export const AdminPortal: React.FC = () => {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
             >
-              {activeTab === 'dashboard' && <AdminDashboard />}
-              {activeTab === 'sales' && <SalesManagement />}
-              {activeTab === 'customers' && <CustomerManagement />}
-              {activeTab === 'products' && <ProductManagement />}
-              {activeTab === 'new-product' && <AddProductForm onSuccess={() => setActiveTab('products')} />}
-              {activeTab === 'coupons' && <CouponManagement />}
-              {activeTab === 'settings' && (
-                <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-8">
-                  <h3 className="text-xl font-bold mb-4">Configurações Gerais</h3>
-                  <p className="text-neutral-400">Configurações da loja em desenvolvimento.</p>
-                </div>
-              )}
+              <ErrorBoundary key={activeTab}>
+                {activeTab === 'dashboard' && <AdminDashboard />}
+                {activeTab === 'sales' && <SalesManagement />}
+                {activeTab === 'customers' && <CustomerManagement />}
+                {activeTab === 'products' && <ProductManagement />}
+                {activeTab === 'new-product' && <AddProductForm onSuccess={() => setActiveTab('products')} />}
+                {activeTab === 'coupons' && <CouponManagement />}
+                {activeTab === 'settings' && (
+                  <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-8">
+                    <h3 className="text-xl font-bold mb-4">Configurações Gerais</h3>
+                    <p className="text-neutral-400">Configurações da loja em desenvolvimento.</p>
+                  </div>
+                )}
+              </ErrorBoundary>
             </motion.div>
           </AnimatePresence>
         </div>

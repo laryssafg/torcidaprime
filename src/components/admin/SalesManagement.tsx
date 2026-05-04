@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { adminService } from '../../services/adminService';
 import { formatCurrency } from '../../utils';
-import { ShoppingCart, User, Calendar, Tag, Search, Filter, ChevronDown, Package } from 'lucide-react';
+import { ShoppingCart, User, Calendar, Tag, Search, Filter, ChevronDown, Package, Phone } from 'lucide-react';
 import { Timestamp } from 'firebase/firestore';
 
 export const SalesManagement: React.FC = () => {
@@ -15,26 +15,29 @@ export const SalesManagement: React.FC = () => {
 
   const loadSales = async () => {
     try {
-      const data = (await adminService.getSales()) as any[];
+      const rawData = await adminService.getSales();
+      const data = (Array.isArray(rawData) ? rawData : []) as any[];
+      
       // Sort by date descending
-      const sorted = (data || []).sort((a: any, b: any) => {
+      const sorted = data.sort((a: any, b: any) => {
         const dateA = a.date instanceof Timestamp ? a.date.toMillis() : (a.criadoEm instanceof Timestamp ? a.criadoEm.toMillis() : 0);
         const dateB = b.date instanceof Timestamp ? b.date.toMillis() : (b.criadoEm instanceof Timestamp ? b.criadoEm.toMillis() : 0);
         return dateB - dateA;
       });
       setSales(sorted);
     } catch (error) {
-      console.error(error);
+      console.error("Erro na aba Vendas:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredSales = sales.filter(sale => {
-    const searchStr = searchTerm.toLowerCase();
-    const customerName = sale.cliente?.nome?.toLowerCase() || '';
-    const productName = sale.productName?.toLowerCase() || '';
-    const coupon = sale.couponCode?.toLowerCase() || sale.cupom?.toLowerCase() || '';
+  const filteredSales = (Array.isArray(sales) ? sales : []).filter(sale => {
+    if (!sale) return false;
+    const searchStr = (searchTerm || '').toLowerCase();
+    const customerName = (sale.cliente?.nome || '').toLowerCase();
+    const productName = (sale.productName || '').toLowerCase();
+    const coupon = (sale.couponCode || sale.cupom || '').toLowerCase();
     
     return customerName.includes(searchStr) || 
            productName.includes(searchStr) || 
@@ -72,11 +75,15 @@ export const SalesManagement: React.FC = () => {
 
       <div className="grid gap-4">
         {filteredSales.map((sale) => {
-          const date = sale.date instanceof Timestamp ? sale.date.toDate() : (sale.criadoEm instanceof Timestamp ? sale.criadoEm.toDate() : new Date());
+          if (!sale) return null;
+          const unsafeDate = sale.date || sale.criadoEm;
+          const date = unsafeDate instanceof Timestamp ? unsafeDate.toDate() : new Date();
           const isOrder = sale.type === 'order';
+          const items = Array.isArray(sale.itens) ? sale.itens : [];
+          const cliente = sale.cliente || {};
 
           return (
-            <div key={sale.id} className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 hover:border-gold/30 transition-all group">
+            <div key={sale.id || Math.random().toString()} className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 hover:border-gold/30 transition-all group">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-start gap-4">
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${isOrder ? 'bg-blue-500/10 text-blue-500' : 'bg-gold/10 text-gold'}`}>
@@ -85,7 +92,7 @@ export const SalesManagement: React.FC = () => {
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-bold text-lg">
-                        {isOrder ? `Pedido #${sale.id.slice(-5).toUpperCase()}` : sale.productName}
+                        {isOrder ? `Pedido #${(sale.id || '').slice(-5).toUpperCase()}` : (sale.productName || 'Produto')}
                       </span>
                       <span className={`text-[10px] uppercase font-black px-2 py-0.5 rounded-full ${isOrder ? 'bg-blue-500/20 text-blue-400' : 'bg-gold/20 text-gold'}`}>
                         {isOrder ? 'Pedido Completo' : 'Item Avulso'}
@@ -94,8 +101,14 @@ export const SalesManagement: React.FC = () => {
                     <div className="flex flex-wrap gap-4 text-xs text-neutral-400">
                       <div className="flex items-center gap-1.5">
                         <User size={14} className="text-neutral-500" />
-                        {sale.cliente?.nome || 'Cliente do Site'}
+                        {cliente.nome || 'Cliente do Site'}
                       </div>
+                      {cliente.whatsapp && (
+                        <div className="flex items-center gap-1.5">
+                          <Phone size={14} className="text-neutral-500" />
+                          {cliente.whatsapp}
+                        </div>
+                      )}
                       <div className="flex items-center gap-1.5">
                         <Calendar size={14} className="text-neutral-500" />
                         {date.toLocaleDateString('pt-BR')} {date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
@@ -112,23 +125,23 @@ export const SalesManagement: React.FC = () => {
 
                 <div className="flex items-center justify-between md:flex-col md:items-end gap-2">
                   <div className="text-2xl font-black text-white">
-                    {formatCurrency(sale.total || (sale.price * (sale.qty || 1)))}
+                    {formatCurrency(sale.total || (Number(sale.price || 0) * (Number(sale.qty || 1))))}
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest italic">
-                      {sale.formaPagamento || 'Site'}
+                      {sale.formaPagamento || 'Site'} | {sale.status?.toUpperCase() || 'CONCLUÍDO'}
                     </span>
-                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+                    <div className={`w-2 h-2 rounded-full ${sale.status === 'cancelado' ? 'bg-red-500' : 'bg-green-500'} animate-pulse`}></div>
                   </div>
                 </div>
               </div>
               
-              {isOrder && sale.itens && (
+              {isOrder && items.length > 0 && (
                 <div className="mt-4 pt-4 border-t border-neutral-800 grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {sale.itens.map((item: any, idx: number) => (
+                  {items.map((item: any, idx: number) => (
                     <div key={idx} className="bg-black/40 p-2 rounded-lg text-xs flex justify-between items-center">
-                      <span className="text-neutral-300">{item.quantity}x {item.productName}</span>
-                      <span className="text-neutral-500">{formatCurrency(item.price)}</span>
+                      <span className="text-neutral-300">{item.quantity || 1}x {item.productName || 'Produto'}</span>
+                      <span className="text-neutral-500">{formatCurrency(item.price || 0)}</span>
                     </div>
                   ))}
                 </div>
@@ -138,7 +151,7 @@ export const SalesManagement: React.FC = () => {
         })}
         {filteredSales.length === 0 && (
           <div className="text-center py-20 bg-neutral-900 rounded-3xl border-2 border-dashed border-neutral-800 text-neutral-500">
-            Nenhuma venda encontrada
+            Nenhuma venda encontrada ainda.
           </div>
         )}
       </div>

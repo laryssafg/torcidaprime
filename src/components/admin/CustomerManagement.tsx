@@ -13,18 +13,26 @@ export const CustomerManagement: React.FC = () => {
 
   const loadCustomers = async () => {
     try {
-      const data = (await adminService.getSales()) as any[];
+      const rawData = await adminService.getSales();
+      const data = (Array.isArray(rawData) ? rawData : []) as any[];
       const uniqueCustomersMap = new Map<string, any>();
 
       // Extract unique customers from orders
-      (data || []).forEach((record: any) => {
-        const client = record.cliente;
-        if (client && (client.email || client.whatsapp)) {
-          const key = client.email || client.whatsapp;
+      data.forEach((record: any) => {
+        if (!record) return;
+
+        const client = record.cliente || {};
+        const email = (client.email || '').toLowerCase();
+        const whatsapp = (client.whatsapp || '').replace(/\D/g, '');
+        
+        if (email || whatsapp) {
+          const key = email || whatsapp;
           if (!uniqueCustomersMap.has(key)) {
             uniqueCustomersMap.set(key, {
-              ...client,
-              lastAddress: record.endereco,
+              nome: client.nome || 'Cliente Anonimo',
+              email: email || 'Não informado',
+              whatsapp: client.whatsapp || 'Não informado',
+              lastAddress: record.endereco || null,
               totalOrders: 0,
               totalSpent: 0,
               lastOrder: record.criadoEm || record.date
@@ -33,26 +41,31 @@ export const CustomerManagement: React.FC = () => {
           
           const customer = uniqueCustomersMap.get(key);
           customer.totalOrders += 1;
-          customer.totalSpent += (record.total || (record.price * (record.qty || 1)));
+          customer.totalSpent += (Number(record.total || 0) || (Number(record.price || 0) * (Number(record.qty || 1))));
           
           // Keep newest order date
           const currentTimestamp = record.criadoEm || record.date;
-          if (currentTimestamp?.toMillis() > (customer.lastOrder?.toMillis() || 0)) {
-            customer.lastOrder = currentTimestamp;
-            customer.lastAddress = record.endereco;
+          if (currentTimestamp instanceof Timestamp) {
+            const currentMillis = currentTimestamp.toMillis();
+            const lastMillis = customer.lastOrder instanceof Timestamp ? customer.lastOrder.toMillis() : 0;
+            if (currentMillis > lastMillis) {
+              customer.lastOrder = currentTimestamp;
+              customer.lastAddress = record.endereco || customer.lastAddress;
+            }
           }
         }
       });
 
       setCustomers(Array.from(uniqueCustomersMap.values()));
     } catch (error) {
-      console.error(error);
+      console.error("Erro na aba Clientes:", error);
     } finally {
       setLoading(false);
     }
   };
 
   const filteredCustomers = customers.filter(customer => {
+    if (!customer) return false;
     const searchStr = searchTerm.toLowerCase();
     return (customer.nome || '').toLowerCase().includes(searchStr) || 
            (customer.email || '').toLowerCase().includes(searchStr) ||
@@ -142,7 +155,7 @@ export const CustomerManagement: React.FC = () => {
         ))}
         {filteredCustomers.length === 0 && (
           <div className="col-span-full text-center py-20 bg-neutral-900 rounded-3xl border-2 border-dashed border-neutral-800 text-neutral-500">
-            Nenhum cliente encontrado
+            Nenhum cliente encontrado ainda.
           </div>
         )}
       </div>

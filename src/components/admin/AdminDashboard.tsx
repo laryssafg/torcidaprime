@@ -20,6 +20,7 @@ import {
   Area
 } from 'recharts';
 import { motion } from 'motion/react';
+import { Timestamp } from 'firebase/firestore';
 
 import { getProductMedia } from '../../utils';
 
@@ -49,36 +50,58 @@ export const AdminDashboard: React.FC = () => {
   }, []);
 
   // Calculations
-  const totalRevenue = sales.reduce((acc, sale) => acc + sale.price * sale.qty, 0);
+  const getSaleDate = (sale: any) => {
+    const rawDate = sale.date || sale.criadoEm;
+    if (rawDate instanceof Timestamp) return rawDate.toDate();
+    if (rawDate && typeof rawDate.toDate === 'function') return rawDate.toDate();
+    return new Date(rawDate || Date.now());
+  };
+
+  const totalRevenue = sales.reduce((acc, sale) => {
+    const price = Number(sale.price || 0);
+    const qty = Number(sale.qty || 1);
+    const personalizationPrice = Number(sale.personalization?.additionalPrice || 0);
+    return acc + (price + personalizationPrice) * qty;
+  }, 0);
   
-  const currentMonth = new Date().getMonth();
-  const currentYear = new Date().getFullYear();
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+  
   const monthlySales = sales.filter(sale => {
-    const saleDate = new Date(sale.date);
+    const saleDate = getSaleDate(sale);
     return saleDate.getMonth() === currentMonth && saleDate.getFullYear() === currentYear;
   });
 
   const liquidProfit = sales.reduce((acc, sale) => {
-    // 50% of product, minus extra if coupon used
-    // If original price was P, and sold for S (where S = P - discount)
-    // The user says: "50% do valor de cada produto pois esse foi o lucro, 
-    // se foi vendido com cupom, retirar 50% do valor do produto e mais a % do desconto do cupom e oque sobrar é o valor liquido o lucro"
-    // Let's interpret: Profit = (0.5 * OriginalPrice) - DiscountAmount
-    // But since the current sale price ALREADY has the discount subtracted (sales.price is price at point of sale),
-    // and we know the profit margin is 50% of the ORIGIN price.
-    // Let's assume sale.price is the final paid price.
-    const baseProfit = (sale.price + (sale.discountAmount || 0)) * 0.5;
-    const profit = baseProfit - (sale.discountAmount || 0);
-    return acc + profit;
+    const price = Number(sale.price || 0);
+    const qty = Number(sale.qty || 1);
+    const discount = Number(sale.discountAmount || 0);
+    const personalizationPrice = Number(sale.personalization?.additionalPrice || 0);
+    
+    // Profit = (50% of base price) + personalization profit (assumed 70% margin on personalization) - discount
+    // If no specific rule given for personalization, we assume cost is low since it's service based
+    const baseProfit = (price + discount) * 0.5;
+    const profit = (baseProfit + (personalizationPrice * 0.7)) - discount;
+    
+    return acc + (profit * qty);
   }, 0);
 
   // Group by month for chart
   const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
   const chartData = months.map((month, index) => {
-    const monthSales = sales.filter(s => new Date(s.date).getMonth() === index && new Date(s.date).getFullYear() === currentYear);
+    const monthSales = sales.filter(s => {
+      const d = getSaleDate(s);
+      return d.getMonth() === index && d.getFullYear() === currentYear;
+    });
     return {
       name: month,
-      revenue: monthSales.reduce((acc, s) => acc + s.price * s.qty, 0)
+      revenue: monthSales.reduce((acc, s) => {
+        const p = Number(s.price || 0);
+        const q = Number(s.qty || 1);
+        const pers = Number(s.personalization?.additionalPrice || 0);
+        return acc + (p + pers) * q;
+      }, 0)
     };
   });
 

@@ -194,7 +194,7 @@ export const adminService = {
             const currentData = productSnap.data();
             const currentSales = Number(currentData.salesCount || 0);
             const currentRevenue = Number(currentData.totalRevenue || 0);
-            const itemRevenue = Number(item.product.price * item.quantity);
+            const itemRevenue = Number((item.product.price + (item.personalization?.additionalPrice || 0)) * item.quantity);
             
             console.log(`📊 Atualizando stats do produto: ${item.product.name}`, {
               fromSales: currentSales,
@@ -236,12 +236,27 @@ export const adminService = {
   },
 
   async getSales() {
-    const path = 'pedidos';
+    const pedidosPath = 'pedidos';
+    const vendasPath = 'vendas';
     try {
-      const snapshot = await getDocs(collection(db, path));
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // Resolve both collections if they exist
+      const [pedidosSnap, vendasSnap] = await Promise.allSettled([
+        getDocs(query(collection(db, pedidosPath), orderBy('criadoEm', 'desc'))),
+        getDocs(query(collection(db, vendasPath), orderBy('date', 'desc')))
+      ]);
+
+      const pedidosDocs = pedidosSnap.status === 'fulfilled' ? pedidosSnap.value.docs : [];
+      const vendasDocs = vendasSnap.status === 'fulfilled' ? vendasSnap.value.docs : [];
+
+      const pedidos = pedidosDocs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const sales = vendasDocs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+      console.log(`📊 Stats: ${pedidos.length} pedidos, ${sales.length} vendas (itens)`);
+      
+      return [...pedidos, ...sales];
     } catch (error) {
-      handleFirestoreError(error, OperationType.LIST, path);
+      console.error("Erro ao buscar dados de vendas:", error);
+      return [];
     }
   },
 
