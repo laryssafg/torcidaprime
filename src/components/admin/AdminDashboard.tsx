@@ -6,7 +6,8 @@ import {
   ShoppingBag, 
   Users,
   ArrowUpRight,
-  PieChart as PieChartIcon
+  PieChart as PieChartIcon,
+  ClipboardList
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -32,16 +33,31 @@ export const AdminDashboard: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        console.log("Dashboard: Iniciando busca de dados...");
         const [salesData, productsData] = await Promise.all([
           adminService.getSales(),
           adminService.getProducts()
         ]);
-        // Only include items of type 'sale' to avoid double counting with full orders in the same collection
-        const filteredSales = (salesData || []).filter((s: any) => s.type === 'sale' || (!s.type && s.productId));
-        setSales(filteredSales);
+        
+        console.log(`Dashboard: Dados recebidos. Ventas/Pedidos: ${(salesData || []).length}, Produtos: ${(productsData || []).length}`);
+        
+        // We have two types of records in 'pedidos' and 'vendas':
+        // 1. 'sale' (item individual)
+        // 2. 'order' (pedido completo com múltiplos itens)
+        // To avoid double counting revenue, we should prefer 'order' if available, 
+        // OR define revenue based on 'sale' items if the 'order' records don't exist.
+        
+        const allSales = salesData || [];
+        const orderRecords = allSales.filter((s: any) => s.type === 'order');
+        const itemRecords = allSales.filter((s: any) => s.type === 'sale' || (!s.type && s.productId));
+        
+        // If we have orders, we use them for "Orders Count" and "Revenue"
+        // But for "Products sold count", we might need items from within orders if present.
+        
+        setSales(allSales); // Keep everything and handle in calculations
         setProducts(productsData || []);
       } catch (error) {
-        console.error(error);
+        console.error("Erro no Dashboard:", error);
       } finally {
         setLoading(false);
       }
@@ -49,38 +65,59 @@ export const AdminDashboard: React.FC = () => {
     fetchData();
   }, []);
 
-  // Calculations
+  // Calculations refined
   const getSaleDate = (sale: any) => {
-    const rawDate = sale.date || sale.criadoEm;
+    const rawDate = sale.date || sale.criadoEm || sale.createdAt;
     if (rawDate instanceof Timestamp) return rawDate.toDate();
     if (rawDate && typeof rawDate.toDate === 'function') return rawDate.toDate();
-    return new Date(rawDate || Date.now());
+    if (typeof rawDate === 'string' || typeof rawDate === 'number') return new Date(rawDate);
+    return new Date();
   };
 
-  const totalRevenue = sales.reduce((acc, sale) => {
-    const price = Number(sale.price || 0);
-    const qty = Number(sale.qty || 1);
-    const personalizationPrice = Number(sale.personalization?.additionalPrice || 0);
-    return acc + (price + personalizationPrice) * qty;
-  }, 0);
+  // Improved calculation logic to avoid double counting
+  // If an order has items recorded as 'sale' in the same list, we might double count
+  // Let's assume: if 'order' exists, calculate revenue from 'total' field.
+  // If only 'sale' exists (standalone items), calculate from price * qty.
+  const calculateTotalRevenue = () => {
+    const orders = sales.filter(s => s.type === 'order');
+    const standaloneSales = sales.filter(s => (s.type === 'sale' || (!s.type && s.productId)) && !s.orderId);
+    
+    const orderRev = orders.reduce((acc, order) => acc + Number(order.total || 0), 0);
+    const saleRev = standaloneSales.reduce((acc, sale) => {
+      const p = Number(sale.price || 0);
+      const q = Number(sale.qty || 1);
+      const pers = Number(sale.personalization?.additionalPrice || 0);
+      return acc + (p + pers) * q;
+    }, 0);
+    
+    return orderRev + saleRev;
+  };
+
+  const totalRevenue = calculateTotalRevenue();
   
   const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
   
-  const monthlySales = sales.filter(sale => {
+  const monthlySalesCount = sales.filter(sale => {
+    const type = sale.type || 'sale';
+    if (type !== 'order' && type !== 'sale' && sale.productId === undefined) return false;
+    
     const saleDate = getSaleDate(sale);
     return saleDate.getMonth() === currentMonth && saleDate.getFullYear() === currentYear;
-  });
+  }).length;
 
   const liquidProfit = sales.reduce((acc, sale) => {
+    if (sale.type === 'order') {
+       // For fallback, assume 40% profit on total order if we don't scale by item cost here
+       return acc + (Number(sale.total || 0) * 0.4);
+    }
+    
     const price = Number(sale.price || 0);
     const qty = Number(sale.qty || 1);
     const discount = Number(sale.discountAmount || 0);
     const personalizationPrice = Number(sale.personalization?.additionalPrice || 0);
     
-    // Profit = (50% of base price) + personalization profit (assumed 70% margin on personalization) - discount
-    // If no specific rule given for personalization, we assume cost is low since it's service based
     const baseProfit = (price + discount) * 0.5;
     const profit = (baseProfit + (personalizationPrice * 0.7)) - discount;
     
@@ -94,15 +131,14 @@ export const AdminDashboard: React.FC = () => {
       const d = getSaleDate(s);
       return d.getMonth() === index && d.getFullYear() === currentYear;
     });
-    return {
-      name: month,
-      revenue: monthSales.reduce((acc, s) => {
-        const p = Number(s.price || 0);
-        const q = Number(s.qty || 1);
-        const pers = Number(s.personalization?.additionalPrice || 0);
-        return acc + (p + pers) * q;
-      }, 0)
-    };
+    
+    const orders = monthSales.filter(s => s.type === 'order');
+    const standalone = monthSales.filter(s => (s.type === 'sale' || (!s.type && s.productId)) && !s.orderId);
+    
+    const revenue = orders.reduce((acc, o) => acc + Number(o.total || 0), 0) + 
+                    standalone.reduce((acc, s) => acc + (Number(s.price || 0) + Number(s.personalization?.additionalPrice || 0)) * Number(s.qty || 1), 0);
+                    
+    return { name: month, revenue };
   });
 
   const popularProduct = [...products].sort((a, b) => (b.salesCount || 0) - (a.salesCount || 0))[0];
@@ -117,17 +153,19 @@ export const AdminDashboard: React.FC = () => {
 
   const stats = [
     { label: 'Faturamento Total', value: `R$ ${totalRevenue.toFixed(2)}`, icon: DollarSign, color: 'text-green-500' },
-    { label: 'Vendas no Mês', value: monthlySales.length.toString(), icon: ShoppingBag, color: 'text-gold' },
+    { label: 'Vendas no Mês', value: monthlySalesCount.toString(), icon: ShoppingBag, color: 'text-gold' },
     { label: 'Lucro Líquido', value: `R$ ${liquidProfit.toFixed(2)}`, icon: TrendingUp, color: 'text-blue-500' },
+    { label: 'Pedidos Totais', value: sales.length.toString(), icon: ClipboardList, color: 'text-purple-500' },
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" id="admin-dashboard-layout">
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, i) => (
           <motion.div 
-            key={i}
+            key={stat.label}
+            id={`stat-card-${i}`}
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: i * 0.1 }}
@@ -137,10 +175,10 @@ export const AdminDashboard: React.FC = () => {
               <div className={`p-3 rounded-2xl bg-black/50 ${stat.color}`}>
                 <stat.icon size={24} />
               </div>
-              <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Acumulado</span>
+              <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest italic">Acumulado</span>
             </div>
             <p className="text-neutral-400 text-sm font-medium">{stat.label}</p>
-            <h4 className="text-3xl font-bold mt-1">{stat.value}</h4>
+            <h4 className="text-3xl font-bold mt-1 text-white">{stat.value}</h4>
           </motion.div>
         ))}
       </div>

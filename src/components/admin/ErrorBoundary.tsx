@@ -34,7 +34,7 @@ export class ErrorBoundary extends Component<Props, State> {
           </div>
           <h2 className="text-xl font-bold text-white mb-2">Ops! Algo deu errado.</h2>
           <p className="text-neutral-400 text-sm mb-6 max-w-md mx-auto">
-            {this.fallbackTitle || 'Ocorreu um erro ao carregar esta seção do painel. Isso pode ser causado por dados incompletos no banco de dados.'}
+            {this.props.fallbackTitle || 'Ocorreu um erro ao carregar esta seção do painel. Isso pode ser causado por dados incompletos no banco de dados.'}
           </p>
           <div className="bg-black/40 p-3 rounded-lg text-left mb-6 w-full max-w-lg overflow-auto">
             <code className="text-[10px] text-red-400 font-mono block whitespace-pre-wrap">

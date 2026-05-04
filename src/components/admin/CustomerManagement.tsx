@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { adminService } from '../../services/adminService';
 import { User, Phone, Mail, MapPin, ShoppingBag, Search, ExternalLink } from 'lucide-react';
+import { Timestamp } from 'firebase/firestore';
 
 export const CustomerManagement: React.FC = () => {
   const [customers, setCustomers] = useState<any[]>([]);

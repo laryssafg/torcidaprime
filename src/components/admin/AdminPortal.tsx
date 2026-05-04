@@ -41,6 +41,8 @@ export const AdminPortal: React.FC = () => {
     { id: 'settings', label: 'Configurações', icon: Settings },
   ] as const;
 
+  console.log("Aba ativa:", activeTab);
+
   return (
     <div className="flex min-h-screen bg-black text-white">
       {/* Sidebar */}
@@ -124,12 +126,42 @@ export const AdminPortal: React.FC = () => {
               transition={{ duration: 0.2 }}
             >
               <ErrorBoundary key={activeTab}>
-                {activeTab === 'dashboard' && <AdminDashboard />}
-                {activeTab === 'sales' && <SalesManagement />}
-                {activeTab === 'customers' && <CustomerManagement />}
-                {activeTab === 'products' && <ProductManagement />}
-                {activeTab === 'new-product' && <AddProductForm onSuccess={() => setActiveTab('products')} />}
-                {activeTab === 'coupons' && <CouponManagement />}
+                {activeTab === 'dashboard' && (
+                  <>
+                    {console.log("Renderizando Dashboard")}
+                    <AdminDashboard />
+                  </>
+                )}
+                {activeTab === 'sales' && (
+                  <>
+                    {console.log("Renderizando Vendas")}
+                    <SalesManagement />
+                  </>
+                )}
+                {activeTab === 'customers' && (
+                  <>
+                    {console.log("Renderizando Clientes")}
+                    <CustomerManagement />
+                  </>
+                )}
+                {activeTab === 'products' && (
+                  <>
+                    {console.log("Renderizando Produtos")}
+                    <ProductManagement />
+                  </>
+                )}
+                {activeTab === 'new-product' && (
+                  <>
+                    {console.log("Renderizando Novo Produto")}
+                    <AddProductForm onSuccess={() => setActiveTab('products')} />
+                  </>
+                )}
+                {activeTab === 'coupons' && (
+                  <>
+                    {console.log("Renderizando Cupons")}
+                    <CouponManagement />
+                  </>
+                )}
                 {activeTab === 'settings' && (
                   <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-8">
                     <h3 className="text-xl font-bold mb-4">Configurações Gerais</h3>
