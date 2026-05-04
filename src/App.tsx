@@ -237,7 +237,7 @@ function Storefront() {
           ))}
           <a 
             href="/admin" 
-            className="hover:text-gold transition-colors text-gold/80"
+            className="hover:text-gold transition-colors text-gold font-bold px-4 py-2 border border-gold/20 rounded-lg hover:bg-gold/10"
           >
             Portal do Vendedor
           </a>
