@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { adminService } from '../../services/adminService';
-import { formatCurrency } from '../../utils';
+import { formatCurrency, safeLower, safeText } from '../../utils';
 import { ShoppingCart, User, Calendar, Tag, Search, Filter, ChevronDown, Package, Phone } from 'lucide-react';
 import { Timestamp } from 'firebase/firestore';
 
@@ -34,10 +34,10 @@ export const SalesManagement: React.FC = () => {
 
   const filteredSales = (Array.isArray(sales) ? sales : []).filter(sale => {
     if (!sale) return false;
-    const searchStr = (searchTerm || '').toLowerCase();
-    const customerName = (sale.cliente?.nome || '').toLowerCase();
-    const productName = (sale.productName || '').toLowerCase();
-    const coupon = (sale.couponCode || sale.cupom || '').toLowerCase();
+    const searchStr = safeLower(searchTerm);
+    const customerName = safeLower(sale.cliente?.nome);
+    const productName = safeLower(sale.productName);
+    const coupon = safeLower(sale.couponCode || sale.cupom);
     
     return customerName.includes(searchStr) || 
            productName.includes(searchStr) || 
@@ -81,6 +81,7 @@ export const SalesManagement: React.FC = () => {
           const isOrder = sale.type === 'order';
           const items = Array.isArray(sale.itens) ? sale.itens : [];
           const cliente = sale.cliente || {};
+          const couponText = safeText(sale.couponCode || sale.cupom);
 
           return (
             <div key={sale.id || Math.random().toString()} className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 hover:border-gold/30 transition-all group">
@@ -92,7 +93,7 @@ export const SalesManagement: React.FC = () => {
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-bold text-lg">
-                        {isOrder ? `Pedido #${(sale.id || '').slice(-5).toUpperCase()}` : (sale.productName || 'Produto')}
+                        {isOrder ? `Pedido #${safeText(sale.id).slice(-5).toUpperCase()}` : safeText(sale.productName || 'Produto')}
                       </span>
                       <span className={`text-[10px] uppercase font-black px-2 py-0.5 rounded-full ${isOrder ? 'bg-blue-500/20 text-blue-400' : 'bg-gold/20 text-gold'}`}>
                         {isOrder ? 'Pedido Completo' : 'Item Avulso'}
@@ -101,22 +102,28 @@ export const SalesManagement: React.FC = () => {
                     <div className="flex flex-wrap gap-4 text-xs text-neutral-400">
                       <div className="flex items-center gap-1.5">
                         <User size={14} className="text-neutral-500" />
-                        {cliente.nome || 'Cliente do Site'}
+                        {safeText(cliente.nome) || 'Cliente do Site'}
                       </div>
                       {cliente.whatsapp && (
                         <div className="flex items-center gap-1.5">
                           <Phone size={14} className="text-neutral-500" />
-                          {cliente.whatsapp}
+                          {safeText(cliente.whatsapp)}
                         </div>
                       )}
                       <div className="flex items-center gap-1.5">
                         <Calendar size={14} className="text-neutral-500" />
                         {date.toLocaleDateString('pt-BR')} {date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                       </div>
-                      {(sale.couponCode || sale.cupom) && (
+                      {couponText && (
                         <div className="flex items-center gap-1.5 text-gold">
                           <Tag size={14} />
-                          Cupom: {sale.couponCode || sale.cupom}
+                          Cupom: {couponText}
+                        </div>
+                      )}
+                      {!couponText && isOrder && (
+                        <div className="flex items-center gap-1.5 text-neutral-600">
+                          <Tag size={14} />
+                          Sem cupom
                         </div>
                       )}
                     </div>
@@ -129,7 +136,7 @@ export const SalesManagement: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest italic">
-                      {sale.formaPagamento || 'Site'} | {sale.status?.toUpperCase() || 'CONCLUÍDO'}
+                      {safeText(sale.formaPagamento) || 'Site'} | {safeText(sale.status).toUpperCase() || 'CONCLUÍDO'}
                     </span>
                     <div className={`w-2 h-2 rounded-full ${sale.status === 'cancelado' ? 'bg-red-500' : 'bg-green-500'} animate-pulse`}></div>
                   </div>
@@ -140,7 +147,7 @@ export const SalesManagement: React.FC = () => {
                 <div className="mt-4 pt-4 border-t border-neutral-800 grid grid-cols-1 md:grid-cols-2 gap-2">
                   {items.map((item: any, idx: number) => (
                     <div key={idx} className="bg-black/40 p-2 rounded-lg text-xs flex justify-between items-center">
-                      <span className="text-neutral-300">{item.quantity || 1}x {item.productName || 'Produto'}</span>
+                      <span className="text-neutral-300">{item.quantity || 1}x {safeText(item.productName || 'Produto')}</span>
                       <span className="text-neutral-500">{formatCurrency(item.price || 0)}</span>
                     </div>
                   ))}

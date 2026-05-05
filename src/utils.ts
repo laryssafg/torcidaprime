@@ -11,7 +11,22 @@ export const formatCurrency = (value: number) => {
 };
 
 export const safeText = (value: any): string => {
-  return (value || "").toString();
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number") return String(value);
+  if (typeof value === "boolean") return String(value);
+  if (typeof value === "object") {
+    // Handle coupon objects
+    if (value.codigo) return String(value.codigo);
+    if (value.code) return String(value.code);
+    // General string representation if not special object
+    try {
+      return String(value);
+    } catch {
+      return "";
+    }
+  }
+  return "";
 };
 
 export const safeLower = (value: any): string => {

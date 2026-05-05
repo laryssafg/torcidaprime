@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { adminService } from '../../services/adminService';
 import { User, Phone, Mail, MapPin, ShoppingBag, Search, ExternalLink } from 'lucide-react';
 import { Timestamp } from 'firebase/firestore';
+import { safeLower, safeText } from '../../utils';
 
 export const CustomerManagement: React.FC = () => {
   const [customers, setCustomers] = useState<any[]>([]);
@@ -23,35 +24,38 @@ export const CustomerManagement: React.FC = () => {
         if (!record) return;
 
         const client = record.cliente || {};
-        const email = (client.email || '').toLowerCase();
-        const whatsapp = (client.whatsapp || '').replace(/\D/g, '');
+        const email = safeLower(client.email);
+        const whatsappRaw = safeText(client.whatsapp).replace(/\D/g, '');
         
-        if (email || whatsapp) {
-          const key = email || whatsapp;
+        if (email || whatsappRaw) {
+          const key = email || whatsappRaw;
           if (!uniqueCustomersMap.has(key)) {
             uniqueCustomersMap.set(key, {
-              nome: client.nome || 'Cliente Anonimo',
+              nome: safeText(client.nome) || 'Cliente Anonimo',
               email: email || 'Não informado',
-              whatsapp: client.whatsapp || 'Não informado',
-              lastAddress: record.endereco || null,
+              whatsapp: safeText(client.whatsapp) || 'Não informado',
+              lastAddress: record.endereco || record.address || null,
               totalOrders: 0,
               totalSpent: 0,
-              lastOrder: record.criadoEm || record.date
+              lastOrder: record.criadoEm || record.date || record.createdAt
             });
           }
           
           const customer = uniqueCustomersMap.get(key);
           customer.totalOrders += 1;
-          customer.totalSpent += (Number(record.total || 0) || (Number(record.price || 0) * (Number(record.qty || 1))));
+          
+          const valorRaw = record.total ?? record.totalPedido ?? record.valorTotal ?? record.subtotal ?? 0;
+          const valor = Number(valorRaw);
+          customer.totalSpent += (isNaN(valor) ? 0 : valor);
           
           // Keep newest order date
-          const currentTimestamp = record.criadoEm || record.date;
+          const currentTimestamp = record.criadoEm || record.date || record.createdAt;
           if (currentTimestamp instanceof Timestamp) {
             const currentMillis = currentTimestamp.toMillis();
             const lastMillis = customer.lastOrder instanceof Timestamp ? customer.lastOrder.toMillis() : 0;
             if (currentMillis > lastMillis) {
               customer.lastOrder = currentTimestamp;
-              customer.lastAddress = record.endereco || customer.lastAddress;
+              customer.lastAddress = record.endereco || record.address || customer.lastAddress;
             }
           }
         }
@@ -67,10 +71,10 @@ export const CustomerManagement: React.FC = () => {
 
   const filteredCustomers = customers.filter(customer => {
     if (!customer) return false;
-    const searchStr = searchTerm.toLowerCase();
-    return (customer.nome || '').toLowerCase().includes(searchStr) || 
-           (customer.email || '').toLowerCase().includes(searchStr) ||
-           (customer.whatsapp || '').includes(searchStr);
+    const searchStr = safeLower(searchTerm);
+    return safeLower(customer.nome).includes(searchStr) || 
+           safeLower(customer.email).includes(searchStr) ||
+           safeLower(customer.whatsapp).includes(searchStr);
   });
 
   if (loading) {
@@ -96,12 +100,12 @@ export const CustomerManagement: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredCustomers.map((customer, index) => (
-          <div key={index} className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 hover:border-gold/30 transition-all group overflow-hidden relative">
+          <div key={index} id={`customer-card-${index}`} className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 hover:border-gold/30 transition-all group overflow-hidden relative">
             <div className="absolute top-0 right-0 w-24 h-24 bg-gold/5 rounded-full -mr-8 -mt-8 group-hover:bg-gold/10 transition-colors"></div>
             
             <div className="flex items-center gap-4 mb-6 relative">
               <div className="w-14 h-14 bg-gradient-to-tr from-neutral-800 to-neutral-700 rounded-2xl flex items-center justify-center text-gold font-black text-xl border border-neutral-700 shadow-xl">
-                {(customer.nome || 'C').charAt(0).toUpperCase()}
+                {safeText(customer.nome || 'C').charAt(0).toUpperCase()}
               </div>
               <div>
                 <h4 className="font-bold text-lg group-hover:text-gold transition-colors">{customer.nome || 'Cliente Anonimo'}</h4>
@@ -131,8 +135,8 @@ export const CustomerManagement: React.FC = () => {
                     <MapPin size={14} />
                   </div>
                   <span className="text-xs leading-relaxed text-neutral-400">
-                    {customer.lastAddress.rua}, {customer.lastAddress.numero}<br/>
-                    {customer.lastAddress.cidade} - {customer.lastAddress.estado}
+                    {customer.lastAddress.rua || customer.lastAddress.street}, {customer.lastAddress.numero || customer.lastAddress.number}<br/>
+                    {customer.lastAddress.cidade || customer.lastAddress.city} - {customer.lastAddress.estado || customer.lastAddress.state}
                   </span>
                 </div>
               )}
@@ -141,10 +145,10 @@ export const CustomerManagement: React.FC = () => {
             <div className="mt-8 pt-6 border-t border-neutral-800 flex items-center justify-between">
               <div>
                 <p className="text-[10px] text-neutral-500 uppercase font-black tracking-widest italic">Total Gasto</p>
-                <p className="text-xl font-black text-gold">R$ {customer.totalSpent.toFixed(2)}</p>
+                <p className="text-xl font-black text-gold">R$ {Number(customer.totalSpent).toFixed(2)}</p>
               </div>
               <a 
-                href={`https://wa.me/55${customer.whatsapp?.replace(/\D/g, '')}`} 
+                href={`https://wa.me/55${safeText(customer.whatsapp).replace(/\D/g, '')}`} 
                 target="_blank" 
                 rel="noreferrer"
                 className="w-10 h-10 rounded-xl bg-gold/10 hover:bg-gold text-gold hover:text-black flex items-center justify-center transition-all shadow-lg shadow-gold/5"
