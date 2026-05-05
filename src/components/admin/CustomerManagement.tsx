@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { adminService } from '../../services/adminService';
-import { User, Phone, Mail, MapPin, ShoppingBag, Search, ExternalLink } from 'lucide-react';
+import { User, Phone, Mail, MapPin, ShoppingBag, Search, ExternalLink, Trash2 } from 'lucide-react';
 import { Timestamp } from 'firebase/firestore';
 import { safeLower, safeText } from '../../utils';
 
@@ -8,6 +8,7 @@ export const CustomerManagement: React.FC = () => {
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadCustomers();
@@ -76,6 +77,28 @@ export const CustomerManagement: React.FC = () => {
            safeLower(customer.email).includes(searchStr) ||
            safeLower(customer.whatsapp).includes(searchStr);
   });
+
+  const handleDeleteCustomer = async (customer: any) => {
+    const id = customer.email !== 'Não informado' ? customer.email : customer.whatsapp;
+    if (!id) return;
+
+    if (!window.confirm(`Tem certeza que deseja excluir o cliente "${customer.nome}"? Isso removerá TODO o histórico de pedidos deste cliente.`)) return;
+
+    setDeletingId(id);
+    try {
+      const success = await adminService.deleteCustomerSales(id);
+      if (success) {
+        setCustomers(prev => prev.filter(c => (c.email !== id && c.whatsapp !== id)));
+      } else {
+        alert("Erro ao excluir cliente.");
+      }
+    } catch (error) {
+      console.error("Erro ao excluir cliente:", error);
+      alert("Erro ao excluir cliente.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -147,14 +170,24 @@ export const CustomerManagement: React.FC = () => {
                 <p className="text-[10px] text-neutral-500 uppercase font-black tracking-widest italic">Total Gasto</p>
                 <p className="text-xl font-black text-gold">R$ {Number(customer.totalSpent).toFixed(2)}</p>
               </div>
-              <a 
-                href={`https://wa.me/55${safeText(customer.whatsapp).replace(/\D/g, '')}`} 
-                target="_blank" 
-                rel="noreferrer"
-                className="w-10 h-10 rounded-xl bg-gold/10 hover:bg-gold text-gold hover:text-black flex items-center justify-center transition-all shadow-lg shadow-gold/5"
-              >
-                <ExternalLink size={18} />
-              </a>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => handleDeleteCustomer(customer)}
+                  disabled={deletingId === (customer.email !== 'Não informado' ? customer.email : customer.whatsapp)}
+                  className="w-10 h-10 rounded-xl bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white flex items-center justify-center transition-all"
+                  title="Excluir Histórico do Cliente"
+                >
+                  <Trash2 size={18} />
+                </button>
+                <a 
+                  href={`https://wa.me/55${safeText(customer.whatsapp).replace(/\D/g, '')}`} 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="w-10 h-10 rounded-xl bg-gold/10 hover:bg-gold text-gold hover:text-black flex items-center justify-center transition-all shadow-lg shadow-gold/5"
+                >
+                  <ExternalLink size={18} />
+                </a>
+              </div>
             </div>
           </div>
         ))}

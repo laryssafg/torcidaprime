@@ -260,6 +260,48 @@ export const adminService = {
     }
   },
 
+  async deleteSale(saleId: string) {
+    try {
+      // Try to delete from both potential collections
+      await Promise.allSettled([
+        deleteDoc(doc(db, 'pedidos', saleId)),
+        deleteDoc(doc(db, 'vendas', saleId))
+      ]);
+      return true;
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `pedidos/vendas/${saleId}`);
+      return false;
+    }
+  },
+
+  async deleteCustomerSales(identifier: string) {
+    try {
+      const pedidosPath = 'pedidos';
+      const vendasPath = 'vendas';
+      
+      const collections = [pedidosPath, vendasPath];
+      const deletePromises: Promise<any>[] = [];
+
+      for (const path of collections) {
+        // Try to find by email
+        const qEmail = query(collection(db, path), where('cliente.email', '==', identifier));
+        const snapEmail = await getDocs(qEmail);
+        snapEmail.docs.forEach(d => deletePromises.push(deleteDoc(doc(db, path, d.id))));
+
+        // Try to find by whatsapp
+        const qWhatsapp = query(collection(db, path), where('cliente.whatsapp', '==', identifier));
+        const snapWhatsapp = await getDocs(qWhatsapp);
+        snapWhatsapp.docs.forEach(d => deletePromises.push(deleteDoc(doc(db, path, d.id))));
+      }
+
+      await Promise.allSettled(deletePromises);
+      return true;
+    } catch (error) {
+      console.error("Erro ao excluir vendas do cliente:", error);
+      return false;
+    }
+  },
+
   async createOrder(order: any) {
     const path = 'pedidos';
     try {

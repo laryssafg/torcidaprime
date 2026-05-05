@@ -13,19 +13,20 @@ import { motion } from 'motion/react';
 
 interface Props {
   onSuccess: () => void;
+  productToEdit?: any;
 }
 
-export const AddProductForm: React.FC<Props> = ({ onSuccess }) => {
+export const AddProductForm: React.FC<Props> = ({ onSuccess, productToEdit }) => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    name: '',
-    price: '',
-    category: Category.BRASIL,
-    personalizable: false,
-    description: '',
+    name: productToEdit?.name || '',
+    price: productToEdit?.price?.toString() || '',
+    category: productToEdit?.category || Category.BRASIL,
+    personalizable: productToEdit?.personalizable || false,
+    description: productToEdit?.description || '',
   });
-  const [images, setImages] = useState<string[]>(['']);
-  const [sizes, setSizes] = useState<string[]>([]);
+  const [images, setImages] = useState<string[]>(productToEdit?.images || ['']);
+  const [sizes, setSizes] = useState<string[]>(productToEdit?.sizes || []);
 
   const handleAddImage = () => setImages([...images, '']);
   const handleRemoveImage = (index: number) => setImages(images.filter((_, i) => i !== index));
@@ -48,7 +49,7 @@ export const AddProductForm: React.FC<Props> = ({ onSuccess }) => {
     setLoading(true);
     
     try {
-      await adminService.addProduct({
+      const productData = {
         name: formData.name,
         price: parseFloat(formData.price),
         category: formData.category,
@@ -56,12 +57,18 @@ export const AddProductForm: React.FC<Props> = ({ onSuccess }) => {
         images: images.filter(img => img.trim() !== ''),
         sizes: sizes,
         description: formData.description,
-        soldOut: false
-      });
+        soldOut: productToEdit?.soldOut || false
+      };
+
+      if (productToEdit?.id) {
+        await adminService.updateProduct(productToEdit.id, productData);
+      } else {
+        await adminService.addProduct(productData);
+      }
       onSuccess();
     } catch (error) {
       console.error(error);
-      alert('Erro ao adicionar produto.');
+      alert('Erro ao salvar produto.');
     } finally {
       setLoading(false);
     }
@@ -219,7 +226,7 @@ export const AddProductForm: React.FC<Props> = ({ onSuccess }) => {
             className="px-8 py-3 rounded-xl font-bold bg-gold text-black hover:bg-gold/90 transition-all shadow-lg shadow-gold/10 flex items-center gap-2"
           >
             {loading ? <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div> : <Check size={20} />}
-            Adicionar Produto
+            {productToEdit ? 'Salvar Alterações' : 'Adicionar Produto'}
           </button>
         </div>
       </form>

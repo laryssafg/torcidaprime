@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { adminService } from '../../services/adminService';
 import { formatCurrency, safeLower, safeText } from '../../utils';
-import { ShoppingCart, User, Calendar, Tag, Search, Filter, ChevronDown, Package, Phone } from 'lucide-react';
+import { ShoppingCart, User, Calendar, Tag, Search, Filter, ChevronDown, Package, Phone, Trash2 } from 'lucide-react';
 import { Timestamp } from 'firebase/firestore';
 
 export const SalesManagement: React.FC = () => {
   const [sales, setSales] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadSales();
@@ -29,6 +30,26 @@ export const SalesManagement: React.FC = () => {
       console.error("Erro na aba Vendas:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!id) return;
+    if (!window.confirm('Tem certeza que deseja excluir esta venda? Esta ação não pode ser desfeita.')) return;
+    
+    setDeletingId(id);
+    try {
+      const success = await adminService.deleteSale(id);
+      if (success) {
+        setSales(prev => prev.filter(s => s.id !== id));
+      } else {
+        alert("Erro ao excluir venda.");
+      }
+    } catch (error) {
+      console.error("Erro ao excluir venda:", error);
+      alert("Erro ao excluir venda.");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -98,6 +119,14 @@ export const SalesManagement: React.FC = () => {
                       <span className={`text-[10px] uppercase font-black px-2 py-0.5 rounded-full ${isOrder ? 'bg-blue-500/20 text-blue-400' : 'bg-gold/20 text-gold'}`}>
                         {isOrder ? 'Pedido Completo' : 'Item Avulso'}
                       </span>
+                      <button 
+                        onClick={() => handleDelete(sale.id)}
+                        disabled={deletingId === sale.id}
+                        className="p-2 text-neutral-600 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all ml-2"
+                        title="Excluir Venda"
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </div>
                     <div className="flex flex-wrap gap-4 text-xs text-neutral-400">
                       <div className="flex items-center gap-1.5">

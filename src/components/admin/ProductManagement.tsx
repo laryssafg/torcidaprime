@@ -12,11 +12,13 @@ import {
   ShoppingBag,
   MoreVertical,
   Filter,
-  UploadCloud
+  UploadCloud,
+  Edit2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 import { getProductMedia, safeLower } from '../../utils';
+import { AddProductForm } from './AddProductForm';
 
 export const ProductManagement: React.FC = () => {
   const [products, setProducts] = useState<any[]>([]);
@@ -24,6 +26,7 @@ export const ProductManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>('todos');
+  const [editingProduct, setEditingProduct] = useState<any | null>(null);
 
   useEffect(() => {
     fetchProducts();
@@ -73,8 +76,41 @@ export const ProductManagement: React.FC = () => {
   if (loading) return <div className="flex items-center justify-center p-20"><div className="w-8 h-8 border-4 border-gold border-t-transparent rounded-full animate-spin"></div></div>;
 
   return (
-    <div className="bg-neutral-900 border border-neutral-800 rounded-3xl overflow-hidden">
-      <div className="p-6 border-b border-neutral-800 bg-neutral-900/50">
+    <div className="space-y-6">
+      <AnimatePresence mode="wait">
+        {editingProduct ? (
+          <motion.div
+            key="edit-form"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold">Editar Produto: {editingProduct.name}</h3>
+              <button 
+                onClick={() => setEditingProduct(null)}
+                className="text-sm font-bold text-neutral-500 hover:text-white"
+              >
+                Voltar para Lista
+              </button>
+            </div>
+            <AddProductForm 
+              productToEdit={editingProduct} 
+              onSuccess={() => {
+                setEditingProduct(null);
+                fetchProducts();
+              }} 
+            />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="product-list"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            className="bg-neutral-900 border border-neutral-800 rounded-3xl overflow-hidden"
+          >
+            <div className="p-6 border-b border-neutral-800 bg-neutral-900/50">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 w-5 h-5" />
@@ -184,6 +220,13 @@ export const ProductManagement: React.FC = () => {
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button 
+                        onClick={() => setEditingProduct(product)}
+                        title="Editar"
+                        className="p-2 text-neutral-500 hover:text-gold hover:bg-gold/10 rounded-lg transition-colors"
+                      >
+                        <Edit2 size={18} />
+                      </button>
+                      <button 
                         onClick={() => handleToggleSoldOut(product.id, product.soldOut)}
                         title={product.soldOut ? "Ativar" : "Esgotar"}
                         className={`p-2 rounded-lg transition-colors ${
@@ -213,6 +256,9 @@ export const ProductManagement: React.FC = () => {
           </div>
         )}
       </div>
-    </div>
+      </motion.div>
+    )}
+  </AnimatePresence>
+</div>
   );
 };
