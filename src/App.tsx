@@ -11,14 +11,14 @@ import { auth, db } from './lib/firebase';
 import { AdminLogin } from './components/admin/AdminLogin';
 import { AdminPortal } from './components/admin/AdminPortal';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  ShoppingCart, 
-  Search, 
-  Menu, 
-  X, 
-  ChevronRight, 
+import {
+  ShoppingCart,
+  Search,
+  Menu,
+  X,
+  ChevronRight,
   ChevronLeft,
-  Trash2, 
+  Trash2,
   Truck,
   Package,
   ShieldCheck,
@@ -28,24 +28,24 @@ import {
   Minus,
   Check
 } from 'lucide-react';
-import { 
-  Category, 
-  Product, 
-  CartItem, 
-  PersonalizationType, 
+import {
+  Category,
+  Product,
+  CartItem,
+  PersonalizationType,
   OrderData,
 } from './types';
-import { 
-  PRODUCTS, 
-  COUPON_CODE, 
-  COUPON_DISCOUNT, 
+import {
+  PRODUCTS,
+  COUPON_CODE,
+  COUPON_DISCOUNT,
   PERSONALIZATION_OPTIONS,
   COLORS
 } from './constants';
 import { adminService } from './services/adminService';
-import { 
-  formatCurrency, 
-  generateWhatsAppLink, 
+import {
+  formatCurrency,
+  generateWhatsAppLink,
   getAutoDescription,
   safeText,
   safeLower,
@@ -60,6 +60,9 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/admin" element={<AdminRoute />} />
+        <Route path="/pagamento/sucesso" element={<PagamentoSucesso />} />
+        <Route path="/pagamento/erro" element={<PagamentoErro />} />
+        <Route path="/pagamento/pendente" element={<PagamentoPendente />} />
         <Route path="/*" element={<Storefront />} />
       </Routes>
     </BrowserRouter>
@@ -106,7 +109,7 @@ function Storefront() {
     // Products Listener
     const unsubscribeProducts = onSnapshot(collection(db, 'produtos'), (snapshot) => {
       const rawProds = snapshot.docs.map(doc => normalizeProduct(doc.id, doc.data()));
-      
+
       const prods = rawProds.filter(p => {
         const isValid = p.name && !Number.isNaN(p.price) && p.price > 0 && p.active !== false;
         if (!isValid) {
@@ -180,9 +183,9 @@ function Storefront() {
   };
 
   const applyCoupon = () => {
-    const coupon = dbCoupons.find(c => c.code.toUpperCase() === couponInput.toUpperCase()) || 
-                   (couponInput.toUpperCase() === COUPON_CODE ? { code: COUPON_CODE, discountPercent: COUPON_DISCOUNT * 100 } : null);
-    
+    const coupon = dbCoupons.find(c => c.code.toUpperCase() === couponInput.toUpperCase()) ||
+      (couponInput.toUpperCase() === COUPON_CODE ? { code: COUPON_CODE, discountPercent: COUPON_DISCOUNT * 100 } : null);
+
     if (coupon) {
       setAppliedCoupon(coupon);
       alert(`Cupom aplicado: ${coupon.discountPercent}% de desconto.`);
@@ -196,7 +199,7 @@ function Storefront() {
       {/* HEADER */}
       <header className="fixed top-0 left-0 w-full h-16 bg-black border-b border-neutral-800 z-[60] px-4 md:px-8 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button 
+          <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             className="lg:hidden p-2 hover:bg-neutral-800 rounded-lg"
           >
@@ -204,9 +207,9 @@ function Storefront() {
           </button>
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => { setSelectedCategory('Todos'); setSearchQuery(''); }}>
             <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center border-2 border-gold shadow-lg shadow-gold/20 flex-shrink-0">
-              <img 
-                src="https://i.imgur.com/UFZMD9V.png" 
-                alt="Logo" 
+              <img
+                src="https://i.imgur.com/UFZMD9V.png"
+                alt="Logo"
                 className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"
               />
@@ -227,7 +230,7 @@ function Storefront() {
             { label: 'NBA', cat: Category.NBA },
             { label: 'Bonés', cat: Category.BONES }
           ].map(item => (
-            <button 
+            <button
               key={item.label}
               onClick={() => setSelectedCategory(item.cat as any)}
               className={`hover:text-[#fedf00] transition-colors ${selectedCategory === item.cat ? 'text-[#fedf00]' : ''}`}
@@ -235,8 +238,8 @@ function Storefront() {
               {item.label}
             </button>
           ))}
-          <a 
-            href="/admin" 
+          <a
+            href="/admin"
             className="hover:text-gold transition-colors text-gold font-bold px-4 py-2 border border-gold/20 rounded-lg hover:bg-gold/10"
           >
             Portal do Vendedor
@@ -244,7 +247,7 @@ function Storefront() {
         </nav>
 
         <div className="flex items-center gap-4">
-          <div 
+          <div
             onClick={() => setIsCartOpen(true)}
             className="p-2 bg-neutral-800 hover:bg-neutral-700 rounded-full relative cursor-pointer group transition-colors"
           >
@@ -255,9 +258,9 @@ function Storefront() {
               </span>
             )}
           </div>
-          <a 
-            href={`https://wa.me/11948626304`} 
-            target="_blank" 
+          <a
+            href={`https://wa.me/11948626304`}
+            target="_blank"
             rel="noopener noreferrer"
             className="bg-[#25D366] text-black px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest hover:brightness-110 transition-all flex items-center gap-2"
           >
@@ -312,31 +315,31 @@ function Storefront() {
           {/* HERO BANNER */}
           <section className="relative h-64 md:h-80 bg-neutral-950 flex items-center shrink-0 border-b border-neutral-800 overflow-hidden">
             <div className="absolute inset-0 z-0">
-               <img 
-                 src="https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&q=80&w=1920" 
-                 alt="Hero" 
-                 className="w-full h-full object-cover opacity-20"
-               />
-               <div className="absolute inset-0 bg-gradient-to-r from-[#002776]/60 to-black/80"></div>
+              <img
+                src="https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&q=80&w=1920"
+                alt="Hero"
+                className="w-full h-full object-cover opacity-20"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#002776]/60 to-black/80"></div>
             </div>
-            
+
             <div className="container mx-auto px-8 relative z-10">
               <span className="inline-block px-2 py-1 bg-[#fedf00] text-black text-[9px] font-black uppercase italic mb-3 tracking-widest">Oferta Especial</span>
               <h2 className="text-4xl md:text-5xl font-black italic uppercase leading-[0.9] mb-3 tracking-tighter">
-                VISTA SUA TORCIDA<br/>
+                VISTA SUA TORCIDA<br />
                 COM <span className="text-[#009b3a]">ESTILO</span> <span className="text-[#fedf00]">PRIME</span>
               </h2>
               <p className="text-xs text-white/60 mb-6 max-w-sm uppercase font-bold tracking-wider">
                 Camisas do Brasil, clubes nacionais e internacionais com personalização oficial premium.
               </p>
               <div className="flex gap-3">
-                <button 
+                <button
                   onClick={() => window.scrollTo({ top: 400, behavior: 'smooth' })}
                   className="bg-white text-black px-8 h-10 rounded-full text-xs font-black uppercase italic hover:bg-[#fedf00] transition-colors"
                 >
                   Ver Produtos
                 </button>
-                <button 
+                <button
                   onClick={() => setIsCheckoutOpen(true)}
                   className="border border-white/20 text-white px-8 h-10 rounded-full text-xs font-black uppercase italic hover:bg-white/10 transition-colors"
                 >
@@ -353,8 +356,8 @@ function Storefront() {
           <div className="lg:hidden p-6 bg-neutral-900 border-b border-neutral-800">
             <div className="relative group">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-500" />
-              <input 
-                type="text" 
+              <input
+                type="text"
                 placeholder="BUSCAR PRODUTO..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -378,21 +381,21 @@ function Storefront() {
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
               <AnimatePresence mode="popLayout">
                 {filteredProducts.map((p) => (
-                  <ProductCard 
-                    key={p.id} 
-                    product={p} 
-                    onView={() => setSelectedProduct(p)} 
+                  <ProductCard
+                    key={p.id}
+                    product={p}
+                    onView={() => setSelectedProduct(p)}
                   />
                 ))}
               </AnimatePresence>
             </div>
-            
+
             {filteredProducts.length === 0 && (
               <div className="py-32 text-center">
                 <Package className="w-16 h-16 text-neutral-800 mx-auto mb-4" />
                 <h3 className="text-xl font-black italic uppercase tracking-tighter text-white/80">Nada por aqui...</h3>
                 <p className="text-xs text-white/40 font-bold uppercase tracking-widest mt-2">Tente outros filtros ou termos.</p>
-                <button 
+                <button
                   onClick={() => { setSelectedCategory('Todos'); setPriceFilter('any'); setSearchQuery(''); }}
                   className="mt-6 text-[#fedf00] font-black uppercase text-[10px] tracking-widest italic hover:underline"
                 >
@@ -401,7 +404,7 @@ function Storefront() {
               </div>
             )}
           </div>
-          
+
           {/* FOOTER */}
           <footer className="mt-auto h-12 bg-neutral-950 border-t border-neutral-800 flex items-center justify-between px-8 text-[9px] uppercase tracking-[0.2em] text-white/40 font-medium shrink-0">
             <div className="flex items-center gap-4">
@@ -420,7 +423,7 @@ function Storefront() {
       {/* MODALS */}
       <AnimatePresence>
         {isMenuOpen && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, x: -100 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -100 }}
@@ -429,9 +432,9 @@ function Storefront() {
             <div className="flex flex-col gap-1">
               <div className="flex items-center gap-3 mb-8">
                 <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center border-2 border-gold shadow-lg shadow-gold/20 flex-shrink-0 bg-gold">
-                  <img 
-                    src="https://i.imgur.com/UFZMD9V.png" 
-                    alt="Logo" 
+                  <img
+                    src="https://i.imgur.com/UFZMD9V.png"
+                    alt="Logo"
                     className="w-full h-full object-cover"
                     referrerPolicy="no-referrer"
                   />
@@ -460,7 +463,7 @@ function Storefront() {
                 <ShieldCheck className="w-5 h-5 text-gold" />
               </a>
             </div>
-            
+
             <div className="mt-auto space-y-4">
               <div className="bg-neutral-900 p-4 rounded-xl border border-neutral-800">
                 <p className="text-[10px] font-black uppercase text-white/30 mb-2">Suporte Prime</p>
@@ -470,15 +473,15 @@ function Storefront() {
           </motion.div>
         )}
         {selectedProduct && (
-          <ProductModal 
+          <ProductModal
             key="product-modal"
-            product={selectedProduct} 
-            onClose={() => setSelectedProduct(null)} 
+            product={selectedProduct}
+            onClose={() => setSelectedProduct(null)}
             onAddToCart={addToCart}
           />
         )}
         {isCartOpen && (
-          <CartModal 
+          <CartModal
             key="cart-modal"
             cart={cart}
             subtotal={cartSubtotal}
@@ -493,7 +496,7 @@ function Storefront() {
           />
         )}
         {isCheckoutOpen && (
-          <CheckoutModal 
+          <CheckoutModal
             key="checkout-modal"
             cart={cart}
             total={cartTotal}
@@ -505,7 +508,7 @@ function Storefront() {
         )}
       </AnimatePresence>
 
-      <a 
+      <a
         href={`https://wa.me/11948626304`}
         target="_blank"
         rel="noopener noreferrer"
@@ -523,9 +526,9 @@ function ProductCard({ product, onView }: { product: Product, onView: () => void
   const images = getProductMedia(product);
   const sizes = getProductSizes(product);
   const isSoldOut = product.soldOut || (sizes.length > 0 && sizes.every(s => s === 'ESG'));
-  
+
   return (
-    <motion.div 
+    <motion.div
       layout
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -534,9 +537,9 @@ function ProductCard({ product, onView }: { product: Product, onView: () => void
       className="bg-[#151515] border border-neutral-800 p-4 rounded-xl flex flex-col group hover:border-[#009b3a] transition-all relative overflow-hidden"
     >
       <div className="relative aspect-[4/5] bg-neutral-900 rounded-lg overflow-hidden flex items-center justify-center">
-        <img 
-          src={images[0]} 
-          alt={product.name} 
+        <img
+          src={images[0]}
+          alt={product.name}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           referrerPolicy="no-referrer"
         />
@@ -555,17 +558,17 @@ function ProductCard({ product, onView }: { product: Product, onView: () => void
           </>
         )}
       </div>
-      
+
       <div className="mt-4 flex-grow flex flex-col">
         <h4 className="font-bold text-sm truncate uppercase tracking-tight text-white/90 mb-1">{product.name}</h4>
         <p className="text-[9px] font-bold text-white/30 uppercase tracking-widest mb-4 italic">{product.category}</p>
-        
+
         <div className="mt-auto flex justify-between items-end">
           <div>
             <span className="text-[#fedf00] font-black text-lg italic tracking-tighter">{formatCurrency(product.price)}</span>
             <p className="text-[9px] text-white/30 font-bold uppercase tracking-widest leading-none mt-1">{sizes.length > 0 ? sizes.join(', ') : 'Consulte disponibilidade'}</p>
           </div>
-          <button 
+          <button
             onClick={onView}
             className="bg-white/5 hover:bg-[#fedf00] hover:text-black p-2 rounded-lg transition-colors group/btn"
           >
@@ -577,13 +580,13 @@ function ProductCard({ product, onView }: { product: Product, onView: () => void
   );
 }
 
-function ProductModal({ 
-  product, 
-  onClose, 
+function ProductModal({
+  product,
+  onClose,
   onAddToCart
-}: { 
-  product: Product, 
-  onClose: () => void, 
+}: {
+  product: Product,
+  onClose: () => void,
   onAddToCart: (item: CartItem) => void,
   key?: string | number
 }) {
@@ -618,7 +621,7 @@ function ProductModal({
       alert('Por favor, selecione um tamanho.');
       return;
     }
-    
+
     if (persType === PersonalizationType.NAME_NUMBER || persType === PersonalizationType.NAME_OR_NUMBER) {
       if (persName.length > 12) return alert('O nome excede o limite de 12 letras.');
       if (persNumber.length > 2) return alert('O número excede o limite de 2 dígitos.');
@@ -648,20 +651,20 @@ function ProductModal({
   };
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[100] flex items-center justify-center p-4"
     >
       <div className="absolute inset-0 bg-neutral-950/90 backdrop-blur-md" onClick={onClose}></div>
-      <motion.div 
+      <motion.div
         initial={{ y: 50, scale: 0.95 }}
         animate={{ y: 0, scale: 1 }}
         exit={{ y: 50, scale: 0.95 }}
         className="bg-neutral-900 w-full max-w-5xl rounded-[2rem] border border-neutral-800 shadow-2xl relative overflow-hidden flex flex-col md:flex-row h-auto max-h-[90vh]"
       >
-        <button 
+        <button
           onClick={onClose}
           className="absolute top-6 right-6 p-2 bg-neutral-800 hover:bg-neutral-700 rounded-full z-10 text-white transition-colors"
         >
@@ -671,29 +674,29 @@ function ProductModal({
         {/* Gallery */}
         <div className="md:w-1/2 bg-black flex flex-col items-center justify-center p-8 relative overflow-hidden">
           <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-[#002776]/20 to-transparent"></div>
-          
+
           <div className="relative w-full aspect-square flex items-center justify-center">
             <AnimatePresence mode="wait">
-              <motion.img 
+              <motion.img
                 key={activeImage}
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                src={images[activeImage] || images[0]} 
-                alt={`${product.name} - ${activeImage + 1}`} 
+                src={images[activeImage] || images[0]}
+                alt={`${product.name} - ${activeImage + 1}`}
                 className="max-h-[60vh] w-full object-contain relative z-10 drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
               />
             </AnimatePresence>
 
             {images.length > 1 && (
               <>
-                <button 
+                <button
                   onClick={() => setActiveImage((prev) => (prev === 0 ? images.length - 1 : prev - 1))}
                   className="absolute left-0 z-20 p-2 bg-black/50 hover:bg-[#fedf00] hover:text-black rounded-full text-white transition-all backdrop-blur-sm"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
-                <button 
+                <button
                   onClick={() => setActiveImage((prev) => (prev === images.length - 1 ? 0 : prev + 1))}
                   className="absolute right-0 z-20 p-2 bg-black/50 hover:bg-[#fedf00] hover:text-black rounded-full text-white transition-all backdrop-blur-sm"
                 >
@@ -788,7 +791,7 @@ function ProductModal({
 
                 <AnimatePresence mode="wait">
                   {persType !== PersonalizationType.NONE && (
-                    <motion.div 
+                    <motion.div
                       key={persType}
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
@@ -804,8 +807,8 @@ function ProductModal({
                       {(persType === PersonalizationType.NAME_NUMBER || persType === PersonalizationType.NAME_OR_NUMBER) && (
                         <div className="flex gap-4">
                           <div className="flex-grow">
-                            <input 
-                              type="text" 
+                            <input
+                              type="text"
                               placeholder="NOME NAS COSTAS"
                               maxLength={12}
                               value={persName}
@@ -818,12 +821,12 @@ function ProductModal({
                             </div>
                           </div>
                           <div className="w-20">
-                            <input 
-                              type="text" 
+                            <input
+                              type="text"
                               placeholder="Nº"
                               maxLength={2}
                               value={persNumber}
-                              onChange={(e) => setPersNumber(e.target.value.replace(/\D/g,''))}
+                              onChange={(e) => setPersNumber(e.target.value.replace(/\D/g, ''))}
                               className="w-full bg-black border border-neutral-800 p-3 rounded-xl text-center text-xs font-black focus:outline-none focus:border-[#fedf00] transition-colors italic"
                             />
                             <div className="text-center mt-1">
@@ -835,7 +838,7 @@ function ProductModal({
 
                       {persType === PersonalizationType.PHRASE && (
                         <div>
-                          <textarea 
+                          <textarea
                             placeholder="SUA FRASE PERSONALIZADA"
                             rows={3}
                             value={persPhrase}
@@ -849,7 +852,7 @@ function ProductModal({
                         </div>
                       )}
 
-                      <textarea 
+                      <textarea
                         placeholder="OBSERVAÇÕES ADICIONAIS"
                         value={persObs}
                         onChange={(e) => setPersObs(e.target.value)}
@@ -861,7 +864,7 @@ function ProductModal({
               </div>
             ) : (
               <p className="text-[10px] font-black text-white/20 text-center py-6 bg-black rounded-xl border border-neutral-800/50 flex flex-col items-center justify-center gap-2 uppercase tracking-widest">
-                <ShieldCheck className="w-5 h-5 opacity-20" /> 
+                <ShieldCheck className="w-5 h-5 opacity-20" />
                 Personalização indisponível para este item.
               </p>
             )}
@@ -869,21 +872,21 @@ function ProductModal({
 
           <div className="flex items-center gap-4 sticky bottom-0 bg-neutral-900 pt-4 md:pt-0">
             <div className="flex items-center gap-1 bg-black p-1 rounded-xl h-14 border border-neutral-800">
-              <button 
+              <button
                 onClick={() => setQuantity(q => Math.max(1, q - 1))}
                 className="w-10 h-10 flex items-center justify-center hover:bg-neutral-800 rounded-lg transition-colors text-white/40 hover:text-white"
               >
                 <Minus className="w-4 h-4" />
               </button>
               <span className="w-8 text-center font-black italic">{quantity}</span>
-              <button 
+              <button
                 onClick={() => setQuantity(q => q + 1)}
                 className="w-10 h-10 flex items-center justify-center hover:bg-neutral-800 rounded-lg transition-colors text-white/40 hover:text-white"
-                >
+              >
                 <Plus className="w-4 h-4" />
               </button>
             </div>
-            <button 
+            <button
               onClick={handleAddToCart}
               className="flex-grow bg-[#fedf00] text-black h-14 rounded-xl font-black uppercase tracking-tighter italic hover:brightness-110 active:scale-95 transition-all shadow-xl shadow-[#fedf00]/5 flex items-center justify-center gap-2 text-sm"
             >
@@ -896,22 +899,22 @@ function ProductModal({
   );
 }
 
-function CartModal({ 
-  cart, 
-  subtotal, 
-  total, 
-  onClose, 
-  onRemove, 
+function CartModal({
+  cart,
+  subtotal,
+  total,
+  onClose,
+  onRemove,
   onCheckout,
   couponInput,
   setCouponInput,
   applyCoupon,
   discount
-}: { 
-  cart: CartItem[], 
-  subtotal: number, 
-  total: number, 
-  onClose: () => void, 
+}: {
+  cart: CartItem[],
+  subtotal: number,
+  total: number,
+  onClose: () => void,
   onRemove: (id: string) => void,
   onCheckout: () => void,
   couponInput: string,
@@ -921,14 +924,14 @@ function CartModal({
   key?: string | number
 }) {
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[100] flex justify-end"
     >
       <div className="absolute inset-0 bg-neutral-950/80 backdrop-blur-md" onClick={onClose}></div>
-      <motion.div 
+      <motion.div
         initial={{ x: '100%' }}
         animate={{ x: 0 }}
         exit={{ x: '100%' }}
@@ -972,14 +975,14 @@ function CartModal({
         {cart.length > 0 && (
           <div className="p-8 bg-neutral-950 border-t border-neutral-800 space-y-6">
             <div className="flex bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden focus-within:border-[#fedf00] transition-colors">
-              <input 
-                type="text" 
+              <input
+                type="text"
                 placeholder="CUPOM DE DESCONTO"
                 value={couponInput}
                 onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
                 className="flex-grow bg-transparent px-4 py-3 text-[10px] font-black tracking-widest focus:outline-none uppercase"
               />
-              <button 
+              <button
                 onClick={applyCoupon}
                 className="bg-[#fedf00] text-black px-6 py-3 text-[10px] font-black uppercase italic hover:brightness-110"
               >
@@ -1004,7 +1007,7 @@ function CartModal({
               </div>
             </div>
 
-            <button 
+            <button
               onClick={onCheckout}
               className="w-full bg-[#fedf00] text-black font-black py-5 rounded-xl uppercase tracking-tighter italic text-sm shadow-xl shadow-[#fedf00]/5 hover:translate-y-[-1px] transition-all flex items-center justify-center gap-3"
             >
@@ -1017,27 +1020,28 @@ function CartModal({
   );
 }
 
-function CheckoutModal({ 
-  cart, 
-  total, 
-  discount, 
-  coupon, 
-  onClose, 
-  onSuccess 
-}: { 
-  cart: CartItem[], 
-  total: number, 
-  discount: number, 
-  coupon: string | null, 
-  onClose: () => void, 
+function CheckoutModal({
+  cart,
+  total,
+  discount,
+  coupon,
+  onClose,
+  onSuccess
+}: {
+  cart: CartItem[],
+  total: number,
+  discount: number,
+  coupon: string | null,
+  onClose: () => void,
   onSuccess: () => void,
   key?: string | number
 }) {
+  const [isProcessing, setIsProcessing] = useState(false);
   const [formData, setFormData] = useState<OrderData>({
     customer: { name: '', whatsapp: '', email: '' },
     address: { cep: '', street: '', number: '', neighborhood: '', city: '', state: '' },
     shipping: 'Correios',
-    payment: 'Pix',
+    payment: 'Mercado Pago',
     coupon: coupon || undefined,
     discountAmount: discount
   });
@@ -1051,6 +1055,8 @@ function CheckoutModal({
       alert('Por favor, preencha o endereço completo.');
       return;
     }
+
+    setIsProcessing(true);
 
     const orderToSave = {
       cliente: {
@@ -1080,56 +1086,69 @@ function CheckoutModal({
       subtotal: total + discount,
       desconto: discount,
       cupom: coupon || null,
-      total: total
+      total: total,
+      status: 'Aguardando pagamento'
     };
-
-    const orderDataWithCoupon: OrderData = {
-      ...formData,
-      coupon: coupon || undefined,
-      discountAmount: discount
-    };
-
-    const link = generateWhatsAppLink(cart, orderDataWithCoupon, total);
 
     try {
-      console.log("Pedido enviado ao Firestore:", orderToSave);
-      
       // Create Order in Firestore
-      await adminService.createOrder(orderToSave);
+      const orderId = await adminService.createOrder(orderToSave);
 
       // Record item-level sales for dashboard
       await adminService.recordSale(cart, coupon || null, discount);
 
-      // Open WhatsApp after successful save
-      window.open(link, '_blank');
-      onSuccess();
-      onClose();
+      // POST to backend
+      const response = await fetch('http://localhost:3001/api/payments/create-preference', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: cart.map(item => ({
+            productId: item.product.id,
+            productName: item.product.name,
+            quantity: item.quantity,
+            price: (item.product.price + (item.personalization?.additionalPrice || 0))
+          })),
+          orderId: orderId,
+          customer: {
+            name: formData.customer.name,
+            email: formData.customer.email
+          }
+        })
+      });
+
+      if (!response.ok) throw new Error('Falha ao comunicar com backend');
+
+      const data = await response.json();
+
+      if (data.init_point) {
+        window.location.href = data.init_point;
+      } else {
+        alert('Erro ao gerar link de pagamento.');
+        setIsProcessing(false);
+      }
     } catch (error: any) {
-      console.error("Erro ao salvar pedido:", error.code, error.message, error);
-      
-      // FALLBACK: Still open WhatsApp even if Firestore fails
-      window.open(link, '_blank');
-      onSuccess();
-      onClose();
+      console.error("Erro ao processar pedido:", error);
+      alert("Houve um erro ao tentar processar o pagamento. Tente novamente.");
+      setIsProcessing(false);
     }
   };
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[110] flex items-center justify-center p-4 overflow-y-auto"
     >
       <div className="absolute inset-0 bg-neutral-950/95 backdrop-blur-xl" onClick={onClose}></div>
-      <motion.div 
+      <motion.div
         initial={{ y: 50, scale: 0.95 }}
         animate={{ y: 0, scale: 1 }}
         exit={{ y: 50, scale: 0.95 }}
         className="bg-neutral-900 w-full max-w-2xl rounded-[2rem] border border-neutral-800 shadow-2xl relative z-10 flex flex-col h-auto max-h-[95vh] text-white"
       >
         <button onClick={onClose} className="absolute top-8 right-8 p-2 hover:bg-neutral-800 rounded-full text-white transition-colors z-20"><X className="w-5 h-5" /></button>
-        
+
         <div className="p-8 border-b border-neutral-800 bg-neutral-950 text-center">
           <h2 className="text-2xl font-black italic tracking-tighter uppercase mb-1">Confirmar Pedido</h2>
           <p className="text-[10px] text-white/40 uppercase font-bold tracking-widest">Insira seus dados para finalizar</p>
@@ -1142,72 +1161,72 @@ function CheckoutModal({
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   placeholder="NOME COMPLETO"
                   value={formData.customer.name}
-                  onChange={(e) => setFormData({...formData, customer: {...formData.customer, name: e.target.value}})}
+                  onChange={(e) => setFormData({ ...formData, customer: { ...formData.customer, name: e.target.value } })}
                   className="w-full bg-black border border-neutral-800 p-4 rounded-xl text-xs font-black italic tracking-widest focus:outline-none focus:border-[#fedf00] transition-colors uppercase"
                 />
               </div>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 placeholder="WHATSAPP (DDD)"
                 value={formData.customer.whatsapp}
-                onChange={(e) => setFormData({...formData, customer: {...formData.customer, whatsapp: e.target.value.replace(/\D/g,'')}})}
+                onChange={(e) => setFormData({ ...formData, customer: { ...formData.customer, whatsapp: e.target.value.replace(/\D/g, '') } })}
                 className="bg-black border border-neutral-800 p-4 rounded-xl text-xs font-black italic tracking-widest focus:outline-none focus:border-[#fedf00] transition-colors uppercase"
               />
-              <input 
-                type="email" 
+              <input
+                type="email"
                 placeholder="E-MAIL"
                 value={formData.customer.email}
-                onChange={(e) => setFormData({...formData, customer: {...formData.customer, email: e.target.value}})}
+                onChange={(e) => setFormData({ ...formData, customer: { ...formData.customer, email: e.target.value } })}
                 className="bg-black border border-neutral-800 p-4 rounded-xl text-xs font-black italic tracking-widest focus:outline-none focus:border-[#fedf00] transition-colors uppercase"
               />
             </div>
           </div>
 
           <div>
-             <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#fedf00] mb-6 italic flex items-center gap-2">
-               <span className="w-1.5 h-1.5 bg-[#fedf00] rotate-45"></span> Endereço de Entrega
+            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#fedf00] mb-6 italic flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-[#fedf00] rotate-45"></span> Endereço de Entrega
             </h4>
             <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-              <input 
+              <input
                 placeholder="CEP"
                 value={formData.address.cep}
-                onChange={(e) => setFormData({...formData, address: {...formData.address, cep: e.target.value.replace(/\D/g,'')}})}
+                onChange={(e) => setFormData({ ...formData, address: { ...formData.address, cep: e.target.value.replace(/\D/g, '') } })}
                 className="md:col-span-2 bg-black border border-neutral-800 p-4 rounded-xl text-xs font-black italic tracking-widest focus:outline-none focus:border-[#fedf00] transition-colors"
                 maxLength={8}
               />
-              <input 
+              <input
                 placeholder="RUA / LOGRADOURO"
                 value={formData.address.street}
-                onChange={(e) => setFormData({...formData, address: {...formData.address, street: e.target.value}})}
+                onChange={(e) => setFormData({ ...formData, address: { ...formData.address, street: e.target.value } })}
                 className="md:col-span-4 col-span-2 bg-black border border-neutral-800 p-4 rounded-xl text-xs font-black italic tracking-widest focus:outline-none focus:border-[#fedf00] transition-colors uppercase"
               />
-              <input 
+              <input
                 placeholder="Nº"
                 value={formData.address.number}
-                onChange={(e) => setFormData({...formData, address: {...formData.address, number: e.target.value}})}
+                onChange={(e) => setFormData({ ...formData, address: { ...formData.address, number: e.target.value } })}
                 className="md:col-span-1 bg-black border border-neutral-800 p-4 rounded-xl text-xs font-black italic tracking-widest focus:outline-none focus:border-[#fedf00] transition-colors uppercase"
               />
-              <input 
+              <input
                 placeholder="BAIRRO"
                 value={formData.address.neighborhood}
-                onChange={(e) => setFormData({...formData, address: {...formData.address, neighborhood: e.target.value}})}
+                onChange={(e) => setFormData({ ...formData, address: { ...formData.address, neighborhood: e.target.value } })}
                 className="md:col-span-2 bg-black border border-neutral-800 p-4 rounded-xl text-xs font-black italic tracking-widest focus:outline-none focus:border-[#fedf00] transition-colors uppercase"
               />
-              <input 
+              <input
                 placeholder="CIDADE"
                 value={formData.address.city}
-                onChange={(e) => setFormData({...formData, address: {...formData.address, city: e.target.value}})}
+                onChange={(e) => setFormData({ ...formData, address: { ...formData.address, city: e.target.value } })}
                 className="md:col-span-2 bg-black border border-neutral-800 p-4 rounded-xl text-xs font-black italic tracking-widest focus:outline-none focus:border-[#fedf00] transition-colors uppercase"
               />
-              <input 
+              <input
                 placeholder="UF"
                 maxLength={2}
                 value={formData.address.state}
-                onChange={(e) => setFormData({...formData, address: {...formData.address, state: e.target.value.toUpperCase()}})}
+                onChange={(e) => setFormData({ ...formData, address: { ...formData.address, state: e.target.value.toUpperCase() } })}
                 className="md:col-span-1 bg-black border border-neutral-800 p-4 rounded-xl text-xs font-black italic tracking-widest focus:outline-none focus:border-[#fedf00] transition-colors uppercase"
               />
             </div>
@@ -1219,11 +1238,11 @@ function CheckoutModal({
                 <span className="w-1.5 h-1.5 bg-[#fedf00] rotate-45"></span> Pagamento
               </h4>
               <div className="grid grid-cols-1 gap-2">
-                {['Pix', 'Cartão', 'Boleto'].map(method => (
+                {['Mercado Pago'].map(method => (
                   <button
                     key={method}
                     type="button"
-                    onClick={() => setFormData({...formData, payment: method as any})}
+                    onClick={() => setFormData({ ...formData, payment: method as any })}
                     className={`py-3 px-4 rounded-xl border text-[10px] font-black uppercase italic tracking-widest transition-all flex items-center justify-between ${formData.payment === method ? 'bg-[#009b3a] border-[#009b3a] text-white shadow-lg shadow-[#009b3a]/10' : 'bg-black border-neutral-800 text-white/40 hover:border-neutral-700'}`}
                   >
                     {method}
@@ -1242,7 +1261,7 @@ function CheckoutModal({
                   <button
                     key={ship}
                     type="button"
-                    onClick={() => setFormData({...formData, shipping: ship as any})}
+                    onClick={() => setFormData({ ...formData, shipping: ship as any })}
                     className={`py-3 px-4 rounded-xl border text-[10px] font-black uppercase italic tracking-widest transition-all flex items-center justify-between ${formData.shipping === ship ? 'bg-[#002776] border-[#002776] text-white shadow-lg shadow-[#002776]/10' : 'bg-black border-neutral-800 text-white/40 hover:border-neutral-700'}`}
                   >
                     {ship}
@@ -1254,25 +1273,105 @@ function CheckoutModal({
           </div>
 
           <div className="pt-8 border-t border-neutral-800 bg-neutral-900 sticky bottom-0">
-             <div className="bg-black border border-neutral-800 rounded-2xl p-6 mb-6">
-                <div className="flex justify-between items-center mb-4">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Total do Pedido</span>
-                  {formData.coupon && <span className="bg-[#009b3a] text-[8px] px-2 py-1 rounded font-black text-white italic">CUPOM ATIVO</span>}
-                </div>
-                <div className="text-3xl font-black italic tracking-tighter text-[#fedf00]">{formatCurrency(total)}</div>
-             </div>
+            <div className="bg-black border border-neutral-800 rounded-2xl p-6 mb-6">
+              <div className="flex justify-between items-center mb-4">
+                <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Total do Pedido</span>
+                {formData.coupon && <span className="bg-[#009b3a] text-[8px] px-2 py-1 rounded font-black text-white italic">CUPOM ATIVO</span>}
+              </div>
+              <div className="text-3xl font-black italic tracking-tighter text-[#fedf00]">{formatCurrency(total)}</div>
+            </div>
 
-            <button 
+            <button
               onClick={handleFinalize}
-              className="w-full bg-[#fedf00] text-black font-black py-5 rounded-xl uppercase tracking-tighter italic shadow-xl shadow-[#fedf00]/5 hover:translate-y-[-2px] transition-all flex items-center justify-center gap-3 text-sm"
+              disabled={isProcessing}
+              className={`w-full text-black font-black py-5 rounded-xl uppercase tracking-tighter italic shadow-xl transition-all flex items-center justify-center gap-3 text-sm ${isProcessing ? 'bg-neutral-600 cursor-not-allowed' : 'bg-[#fedf00] hover:translate-y-[-2px] shadow-[#fedf00]/5'}`}
             >
-              FINALIZAR E ABRIR WHATSAPP
-              <ChevronRight className="w-5 h-5" />
+              {isProcessing ? 'PROCESSANDO...' : 'PAGAR COM MERCADO PAGO'}
+              {!isProcessing && <ChevronRight className="w-5 h-5" />}
             </button>
-            <p className="text-center text-[8px] text-white/20 mt-4 uppercase font-black tracking-[0.3em]">Redirecionando para atendimento</p>
           </div>
         </div>
       </motion.div>
     </motion.div>
+  );
+}
+
+function PagamentoSucesso() {
+  return (
+    <div className="min-h-screen bg-neutral-900 flex items-center justify-center p-4">
+      <div className="bg-black border border-neutral-800 p-8 rounded-3xl max-w-md w-full text-center">
+        <div className="w-20 h-20 bg-[#009b3a]/20 text-[#009b3a] rounded-full flex items-center justify-center mx-auto mb-6">
+          <Check className="w-10 h-10" />
+        </div>
+        <h1 className="text-3xl font-black italic uppercase text-white mb-2">Pagamento Aprovado!</h1>
+        <p className="text-white/60 text-sm mb-8">Seu pedido foi confirmado com sucesso. Você receberá atualizações em breve.</p>
+        <div className="flex flex-col gap-4">
+          <a
+            href={`https://wa.me/11948626304`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-[#25D366] text-black font-black py-4 rounded-xl uppercase italic tracking-widest hover:brightness-110 flex items-center justify-center gap-2"
+          >
+            Falar no WhatsApp
+          </a>
+          <a
+            href="/"
+            className="bg-neutral-800 text-white font-black py-4 rounded-xl uppercase italic tracking-widest hover:bg-neutral-700"
+          >
+            Voltar para a Loja
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PagamentoErro() {
+  return (
+    <div className="min-h-screen bg-neutral-900 flex items-center justify-center p-4">
+      <div className="bg-black border border-neutral-800 p-8 rounded-3xl max-w-md w-full text-center">
+        <div className="w-20 h-20 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+          <X className="w-10 h-10" />
+        </div>
+        <h1 className="text-3xl font-black italic uppercase text-white mb-2">Pagamento Recusado</h1>
+        <p className="text-white/60 text-sm mb-8">Houve um problema com o seu pagamento. Por favor, tente novamente ou entre em contato com o suporte.</p>
+        <div className="flex flex-col gap-4">
+          <a
+            href="/"
+            className="bg-[#fedf00] text-black font-black py-4 rounded-xl uppercase italic tracking-widest hover:brightness-110"
+          >
+            Tentar Novamente
+          </a>
+          <a
+            href={`https://wa.me/11948626304`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="border border-neutral-700 text-white font-black py-4 rounded-xl uppercase italic tracking-widest hover:bg-neutral-800"
+          >
+            Suporte via WhatsApp
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PagamentoPendente() {
+  return (
+    <div className="min-h-screen bg-neutral-900 flex items-center justify-center p-4">
+      <div className="bg-black border border-neutral-800 p-8 rounded-3xl max-w-md w-full text-center">
+        <div className="w-20 h-20 bg-yellow-500/20 text-yellow-500 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-yellow-500/50 border-t-transparent animate-spin"></div>
+        <h1 className="text-3xl font-black italic uppercase text-white mb-2">Pagamento Pendente</h1>
+        <p className="text-white/60 text-sm mb-8">Estamos aguardando a confirmação do pagamento pelo Mercado Pago. Isso pode levar alguns minutos (ou dias úteis para boleto).</p>
+        <div className="flex flex-col gap-4">
+          <a
+            href="/"
+            className="bg-[#fedf00] text-black font-black py-4 rounded-xl uppercase italic tracking-widest hover:brightness-110"
+          >
+            Voltar para a Loja
+          </a>
+        </div>
+      </div>
+    </div>
   );
 }
