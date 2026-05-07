@@ -3,7 +3,7 @@ import cors from 'cors';
 import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
 import dotenv from 'dotenv';
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, updateDoc } from 'firebase/firestore';
+import { getFirestore, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { readFileSync } from 'fs';
 
 dotenv.config();
@@ -30,13 +30,33 @@ app.post('/api/payments/create-preference', async (req, res) => {
 
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
+    // Fetch the order from Firestore to get the exact total with discounts
+    const orderRef = doc(db, 'pedidos', orderId);
+    const orderSnap = await getDoc(orderRef);
+    let orderTotal = 0;
+
+    if (orderSnap.exists()) {
+      const orderData = orderSnap.data();
+      orderTotal = Number(orderData.total) || 0;
+    } else {
+      // Fallback if order not found for some reason
+      orderTotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    }
+
+    if (orderTotal <= 0) {
+      return res.status(400).json({ error: 'O valor do pedido não pode ser zero ou negativo.' });
+    }
+
     const preferenceBody = {
-      items: items.map(item => ({
-        id: item.productId,
-        title: item.productName,
-        quantity: item.quantity,
-        unit_price: item.price,
-      })),
+      items: [
+        {
+          id: orderId,
+          title: "Pedido Torcida Prime",
+          quantity: 1,
+          unit_price: orderTotal,
+          currency_id: "BRL"
+        }
+      ],
       payer: {
         name: customer.name,
         email: customer.email || 'email@exemplo.com',

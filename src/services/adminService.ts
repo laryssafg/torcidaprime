@@ -112,6 +112,7 @@ export const adminService = {
     const path = `produtos/${id}`;
     try {
       await deleteDoc(doc(db, 'produtos', id));
+      console.log(`Produto ${id} removido com sucesso`);
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, path);
     }
@@ -146,6 +147,7 @@ export const adminService = {
     const path = `cupons/${id}`;
     try {
       await deleteDoc(doc(db, 'cupons', id));
+      console.log(`Cupom ${id} removido com sucesso`);
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, path);
     }
@@ -267,6 +269,7 @@ export const adminService = {
         deleteDoc(doc(db, 'pedidos', saleId)),
         deleteDoc(doc(db, 'vendas', saleId))
       ]);
+      console.log(`Pedido ${saleId} removido com sucesso`);
       return true;
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `pedidos/vendas/${saleId}`);
@@ -286,12 +289,18 @@ export const adminService = {
         // Try to find by email
         const qEmail = query(collection(db, path), where('cliente.email', '==', identifier));
         const snapEmail = await getDocs(qEmail);
-        snapEmail.docs.forEach(d => deletePromises.push(deleteDoc(doc(db, path, d.id))));
+        snapEmail.docs.forEach(d => {
+          deletePromises.push(deleteDoc(doc(db, path, d.id)));
+          console.log(`Registro ${d.id} do cliente ${identifier} removido com sucesso`);
+        });
 
         // Try to find by whatsapp
         const qWhatsapp = query(collection(db, path), where('cliente.whatsapp', '==', identifier));
         const snapWhatsapp = await getDocs(qWhatsapp);
-        snapWhatsapp.docs.forEach(d => deletePromises.push(deleteDoc(doc(db, path, d.id))));
+        snapWhatsapp.docs.forEach(d => {
+          deletePromises.push(deleteDoc(doc(db, path, d.id)));
+          console.log(`Registro ${d.id} do cliente ${identifier} removido com sucesso`);
+        });
       }
 
       await Promise.allSettled(deletePromises);
