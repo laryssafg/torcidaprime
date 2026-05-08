@@ -317,7 +317,7 @@ export const adminService = {
       const orderData = cleanUndefined({
         ...order,
         type: 'order',
-        status: 'novo',
+        status: order.status || 'Aguardando pagamento',
         criadoEm: serverTimestamp()
       });
       const docRef = await addDoc(collection(db, path), orderData);

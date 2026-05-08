@@ -80,3 +80,14 @@ export interface OrderData {
   coupon?: string;
   discountAmount: number;
 }
+
+export interface Influencer {
+  id: string;
+  nome: string;
+  email: string;
+  whatsapp: string;
+  cupom: string;
+  senhaHash: string;
+  status: 'ativo' | 'inativo';
+  criadoEm: any;
+}

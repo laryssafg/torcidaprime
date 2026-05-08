@@ -3,7 +3,7 @@ import cors from 'cors';
 import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
 import dotenv from 'dotenv';
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, updateDoc, getDoc } from 'firebase/firestore';
+import { getFirestore, doc, updateDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { readFileSync } from 'fs';
 
 dotenv.config();
@@ -22,7 +22,14 @@ const client = new MercadoPagoConfig({
 
 app.post('/api/payments/create-preference', async (req, res) => {
   try {
-    const { items, orderId, customer } = req.body;
+    const { items, orderId, customer, total, desconto } = req.body;
+
+    console.log("--- DEBUG CREATE PREFERENCE ---");
+    console.log("1. req.body completo:", req.body);
+    console.log("2. orderId:", orderId);
+    console.log("3. total recebido:", total);
+    console.log("4. desconto recebido:", desconto);
+    console.log("5. items recebidos:", items);
     
     if (!process.env.MERCADO_PAGO_ACCESS_TOKEN) {
       console.warn("MERCADO_PAGO_ACCESS_TOKEN não configurado no .env");
@@ -30,27 +37,17 @@ app.post('/api/payments/create-preference', async (req, res) => {
 
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
-    // Fetch the order from Firestore to get the exact total with discounts
-    const orderRef = doc(db, 'pedidos', orderId);
-    const orderSnap = await getDoc(orderRef);
-    let orderTotal = 0;
+    const orderTotal = Number(total);
 
-    if (orderSnap.exists()) {
-      const orderData = orderSnap.data();
-      orderTotal = Number(orderData.total) || 0;
-    } else {
-      // Fallback if order not found for some reason
-      orderTotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    if (isNaN(orderTotal) || orderTotal <= 0) {
+      return res.status(400).json({ error: 'O valor do pedido não pode ser zero ou negativo. Certifique-se de enviar o "total" no corpo da requisição.' });
     }
 
-    if (orderTotal <= 0) {
-      return res.status(400).json({ error: 'O valor do pedido não pode ser zero ou negativo.' });
-    }
+    console.log("Total enviado ao Mercado Pago:", orderTotal);
 
     const preferenceBody = {
       items: [
         {
-          id: orderId,
           title: "Pedido Torcida Prime",
           quantity: 1,
           unit_price: orderTotal,
@@ -69,7 +66,7 @@ app.post('/api/payments/create-preference', async (req, res) => {
       external_reference: orderId,
     };
 
-    console.log('BODY ENVIADO AO MERCADO PAGO:', JSON.stringify(preferenceBody, null, 2));
+    console.log('6. body final enviado ao Mercado Pago:', JSON.stringify(preferenceBody, null, 2));
 
     const preference = new Preference(client);
     const result = await preference.create({ body: preferenceBody });
@@ -82,41 +79,53 @@ app.post('/api/payments/create-preference', async (req, res) => {
 });
 
 app.post('/api/payments/webhook', async (req, res) => {
-  console.log('Webhook recebido:', req.body);
-
+  console.log("Webhook recebido:", req.body);
+  
   try {
-    const paymentId = req.query.id || req.body?.data?.id;
+    const paymentId = req.body?.data?.id || req.query?.id;
 
-    if (!paymentId) {
-      console.log('Webhook ignorado: sem paymentId');
+    if (!paymentId || isNaN(Number(paymentId))) {
+      console.log('Webhook ignorado: paymentId inválido ou ausente');
       return res.sendStatus(200);
     }
 
+    console.log("Payment ID:", paymentId);
+
     const payment = new Payment(client);
-    const paymentInfo = await payment.get({ id: paymentId });
+    const paymentInfo = await payment.get({ id: String(paymentId) });
 
     const status = paymentInfo.status;
     const orderId = paymentInfo.external_reference;
 
-    console.log('Pedido:', orderId, 'Status MP:', status);
+    console.log("Pedido ID:", orderId);
+    console.log("Status Mercado Pago:", status);
 
     if (orderId) {
-      let orderStatus = 'Aguardando pagamento';
-
-      if (status === 'approved')                          orderStatus = 'Pago';
-      else if (status === 'pending' || status === 'in_process') orderStatus = 'Pendente';
-      else if (status === 'rejected')                     orderStatus = 'Recusado';
-      else if (status === 'cancelled')                    orderStatus = 'Cancelado';
-
-      const orderRef = doc(db, 'pedidos', orderId);
-      await updateDoc(orderRef, {
-        status: orderStatus,
+      const updateData = {
         mercadoPagoStatus: status,
         mercadoPagoPaymentId: String(paymentId),
-        atualizadoEm: new Date().toISOString(),
-      });
+        atualizadoEm: serverTimestamp()
+      };
 
-      console.log(`Pedido ${orderId} atualizado para: ${orderStatus}`);
+      let orderStatus = '';
+
+      if (status === 'approved') {
+        orderStatus = 'Pago';
+        updateData.pagoEm = serverTimestamp();
+      } else if (status === 'pending' || status === 'in_process') {
+        orderStatus = 'Pendente';
+      } else if (status === 'rejected') {
+        orderStatus = 'Recusado';
+      } else if (status === 'cancelled') {
+        orderStatus = 'Cancelado';
+      }
+
+      if (orderStatus) {
+        updateData.status = orderStatus;
+        const orderRef = doc(db, 'pedidos', orderId);
+        await updateDoc(orderRef, updateData);
+        console.log("Pedido atualizado com sucesso:", orderId);
+      }
     }
 
     return res.sendStatus(200);

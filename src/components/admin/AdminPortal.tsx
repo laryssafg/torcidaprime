@@ -20,10 +20,11 @@ import { AddProductForm } from './AddProductForm';
 import { CouponManagement } from './CouponManagement';
 import { SalesManagement } from './SalesManagement';
 import { CustomerManagement } from './CustomerManagement';
+import { InfluencerManagement } from './InfluencerManagement';
 import { ErrorBoundary } from './ErrorBoundary';
 import { motion, AnimatePresence } from 'motion/react';
 
-type Tab = 'dashboard' | 'sales' | 'customers' | 'new-product' | 'products' | 'coupons' | 'settings';
+type Tab = 'dashboard' | 'sales' | 'customers' | 'new-product' | 'products' | 'coupons' | 'influencers' | 'settings';
 
 export const AdminPortal: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
@@ -38,6 +39,7 @@ export const AdminPortal: React.FC = () => {
     { id: 'new-product', label: 'Novo Produto', icon: PlusCircle },
     { id: 'products', label: 'Produtos', icon: ShoppingBag },
     { id: 'coupons', label: 'Cupons', icon: Ticket },
+    { id: 'influencers', label: 'Influenciadores', icon: Users },
     { id: 'settings', label: 'Configurações', icon: Settings },
   ] as const;
 
@@ -160,6 +162,12 @@ export const AdminPortal: React.FC = () => {
                   <>
                     {console.log("Renderizando Cupons")}
                     <CouponManagement />
+                  </>
+                )}
+                {activeTab === 'influencers' && (
+                  <>
+                    {console.log("Renderizando Influenciadores")}
+                    <InfluencerManagement />
                   </>
                 )}
                 {activeTab === 'settings' && (

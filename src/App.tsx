@@ -10,6 +10,8 @@ import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { auth, db } from './lib/firebase';
 import { AdminLogin } from './components/admin/AdminLogin';
 import { AdminPortal } from './components/admin/AdminPortal';
+import { InfluencerLogin } from './components/influencer/InfluencerLogin';
+import { InfluencerDashboard } from './components/influencer/InfluencerDashboard';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ShoppingCart,
@@ -34,6 +36,7 @@ import {
   CartItem,
   PersonalizationType,
   OrderData,
+  Influencer
 } from './types';
 import {
   PRODUCTS,
@@ -60,6 +63,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/admin" element={<AdminRoute />} />
+        <Route path="/influenciador" element={<InfluencerRoute />} />
         <Route path="/pagamento/sucesso" element={<PagamentoSucesso />} />
         <Route path="/pagamento/erro" element={<PagamentoErro />} />
         <Route path="/pagamento/pendente" element={<PagamentoPendente />} />
@@ -84,6 +88,29 @@ function AdminRoute() {
   if (loading) return <div className="min-h-screen bg-black flex items-center justify-center"><div className="w-8 h-8 border-4 border-gold border-t-transparent rounded-full animate-spin"></div></div>;
 
   return user ? <AdminPortal /> : <AdminLogin />;
+}
+
+function InfluencerRoute() {
+  const [influencer, setInfluencer] = useState<Influencer | null>(() => {
+    const saved = localStorage.getItem('torcida-prime-influencer');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  const handleLogin = (inf: Influencer) => {
+    localStorage.setItem('torcida-prime-influencer', JSON.stringify(inf));
+    setInfluencer(inf);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('torcida-prime-influencer');
+    setInfluencer(null);
+  };
+
+  if (!influencer) {
+    return <InfluencerLogin onLogin={handleLogin} onBackToHome={() => window.location.href = '/'} />;
+  }
+
+  return <InfluencerDashboard influencer={influencer} onLogout={handleLogout} />;
 }
 
 function Storefront() {
@@ -1112,7 +1139,11 @@ function CheckoutModal({
           customer: {
             name: formData.customer.name,
             email: formData.customer.email
-          }
+          },
+          total: total,
+          subtotal: total + discount,
+          desconto: discount,
+          cupom: coupon || null
         })
       });
 
@@ -1232,26 +1263,7 @@ function CheckoutModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div>
-              <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#fedf00] mb-4 italic flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-[#fedf00] rotate-45"></span> Pagamento
-              </h4>
-              <div className="grid grid-cols-1 gap-2">
-                {['Mercado Pago'].map(method => (
-                  <button
-                    key={method}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, payment: method as any })}
-                    className={`py-3 px-4 rounded-xl border text-[10px] font-black uppercase italic tracking-widest transition-all flex items-center justify-between ${formData.payment === method ? 'bg-[#009b3a] border-[#009b3a] text-white shadow-lg shadow-[#009b3a]/10' : 'bg-black border-neutral-800 text-white/40 hover:border-neutral-700'}`}
-                  >
-                    {method}
-                    {formData.payment === method && <Check className="w-3 h-3" />}
-                  </button>
-                ))}
-              </div>
-            </div>
-
+          <div className="grid grid-cols-1 gap-8">
             <div>
               <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#fedf00] mb-4 italic flex items-center gap-2">
                 <span className="w-1.5 h-1.5 bg-[#fedf00] rotate-45"></span> Entrega
