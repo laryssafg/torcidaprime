@@ -67,6 +67,13 @@ const cleanUndefined = (obj: any): any => {
   return obj;
 };
 
+const normalizeName = (name: string = ""): string => {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+};
+
 export const adminService = {
   // Products
   async getProducts() {
@@ -80,7 +87,30 @@ export const adminService = {
     }
   },
 
+  async checkDuplicateProduct(name: string, excludeId?: string) {
+    const nomeNormalizado = normalizeName(name);
+    console.log("Verificando produto duplicado:", nomeNormalizado);
+    
+    const products = await this.getProducts();
+    if (!products) return false;
+
+    const duplicate = products.find(p => 
+      normalizeName(p.name) === nomeNormalizado && p.id !== excludeId
+    );
+
+    if (duplicate) {
+      console.log("Produto duplicado encontrado:", duplicate);
+      return true;
+    }
+    return false;
+  },
+
   async addProduct(product: Omit<Product, 'id'>) {
+    const isDuplicate = await this.checkDuplicateProduct(product.name);
+    if (isDuplicate) {
+      throw new Error("Já existe um produto cadastrado com esse nome.");
+    }
+
     const path = 'produtos';
     try {
       const docRef = await addDoc(collection(db, path), cleanUndefined({
@@ -96,6 +126,13 @@ export const adminService = {
   },
 
   async updateProduct(id: string, data: Partial<Product>) {
+    if (data.name) {
+      const isDuplicate = await this.checkDuplicateProduct(data.name, id);
+      if (isDuplicate) {
+        throw new Error("Já existe um produto cadastrado com esse nome.");
+      }
+    }
+
     const path = `produtos/${id}`;
     try {
       const docRef = doc(db, 'produtos', id);
@@ -115,6 +152,50 @@ export const adminService = {
       console.log(`Produto ${id} removido com sucesso`);
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, path);
+    }
+  },
+
+  async cleanupDuplicateProducts() {
+    console.log("Iniciando limpeza de produtos duplicados...");
+    try {
+      const products = await this.getProducts();
+      if (!products) return;
+
+      const seen = new Map<string, any>();
+      const toDelete: string[] = [];
+
+      products.forEach(p => {
+        const normalized = normalizeName(p.name);
+        if (seen.has(normalized)) {
+          const existing = seen.get(normalized);
+          // Critério: manter o que tem mais imagens ou o mais recente (updatedAt)
+          const currentScore = (p.images?.length || 0) + (p.updatedAt?.seconds || 0);
+          const existingScore = (existing.images?.length || 0) + (existing.updatedAt?.seconds || 0);
+
+          if (currentScore > existingScore) {
+            console.log("Produto duplicado removido:", existing.id, existing.name);
+            toDelete.push(existing.id);
+            seen.set(normalized, p);
+          } else {
+            console.log("Produto duplicado removido:", p.id, p.name);
+            toDelete.push(p.id);
+          }
+        } else {
+          seen.set(normalized, p);
+        }
+      });
+
+      if (toDelete.length === 0) {
+        console.log("Nenhum produto duplicado encontrado para remoção.");
+        return;
+      }
+
+      console.log(`${toDelete.length} duplicados encontrados. Removendo...`);
+      await Promise.all(toDelete.map(id => deleteDoc(doc(db, 'produtos', id))));
+      console.log("Limpeza concluída com sucesso.");
+      return toDelete.length;
+    } catch (error) {
+      console.error("Erro durante a limpeza de duplicados:", error);
     }
   },
 

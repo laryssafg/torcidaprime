@@ -25,6 +25,7 @@ export const ProductManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
+  const [cleaning, setCleaning] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>('todos');
   const [editingProduct, setEditingProduct] = useState<any | null>(null);
 
@@ -37,6 +38,22 @@ export const ProductManagement: React.FC = () => {
     const data = await adminService.getProducts();
     setProducts(data || []);
     setLoading(false);
+  };
+
+  const handleCleanup = async () => {
+    if (confirm('Deseja remover todos os produtos duplicados (mesmo nome)? Esta ação é permanente.')) {
+      setCleaning(true);
+      try {
+        const removedCount = await adminService.cleanupDuplicateProducts();
+        alert(removedCount ? `${removedCount} produtos duplicados foram removidos.` : 'Nenhum produto duplicado encontrado.');
+        fetchProducts();
+      } catch (error) {
+        console.error('Erro na limpeza:', error);
+        alert('Erro ao limpar duplicados.');
+      } finally {
+        setCleaning(false);
+      }
+    }
   };
 
   const handleImport = async () => {
@@ -123,6 +140,14 @@ export const ProductManagement: React.FC = () => {
             />
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={handleCleanup}
+              disabled={cleaning}
+              className="flex items-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
+            >
+              <Trash2 size={18} className={cleaning ? 'animate-pulse' : ''} />
+              <span className="text-sm font-bold">{cleaning ? 'Limpando...' : 'Limpar Duplicados'}</span>
+            </button>
             <button
               onClick={handleImport}
               disabled={importing}

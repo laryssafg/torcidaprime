@@ -33,6 +33,13 @@ export const safeLower = (value: any): string => {
   return safeText(value).toLowerCase();
 };
 
+export const normalizeName = (name: any): string => {
+  return safeText(name)
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+};
+
 export const normalizeProduct = (docId: string, data: any): Product => {
   const nome = safeText(data.nome || data.name);
   const price = Number(data.preco || data.price || 0);

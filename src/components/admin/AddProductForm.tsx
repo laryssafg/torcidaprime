@@ -66,9 +66,12 @@ export const AddProductForm: React.FC<Props> = ({ onSuccess, productToEdit }) =>
         await adminService.addProduct(productData);
       }
       onSuccess();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert('Erro ao salvar produto.');
+      const errorMessage = error.message?.includes("Já existe um produto") 
+        ? error.message 
+        : 'Erro ao salvar produto.';
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }
