@@ -36,6 +36,7 @@ app.post('/api/payments/create-preference', async (req, res) => {
     }
 
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const backendUrl = process.env.BACKEND_URL || "https://gorged-husband-saturday.ngrok-free.dev";
 
     const orderTotal = Number(total);
 
@@ -44,6 +45,7 @@ app.post('/api/payments/create-preference', async (req, res) => {
     }
 
     console.log("Total enviado ao Mercado Pago:", orderTotal);
+    console.log("Notification URL:", `${backendUrl}/api/payments/webhook`);
 
     const preferenceBody = {
       items: [
@@ -63,6 +65,7 @@ app.post('/api/payments/create-preference', async (req, res) => {
         failure: `${frontendUrl}/pagamento/erro`,
         pending: `${frontendUrl}/pagamento/pendente`,
       },
+      notification_url: `${backendUrl}/api/payments/webhook`,
       external_reference: orderId,
     };
 
@@ -79,26 +82,47 @@ app.post('/api/payments/create-preference', async (req, res) => {
 });
 
 app.post('/api/payments/webhook', async (req, res) => {
-  console.log("Webhook recebido:", req.body);
+  console.log("WEBHOOK CHEGOU");
+  console.log("Body:", JSON.stringify(req.body, null, 2));
+  console.log("Query:", req.query);
   
   try {
-    const paymentId = req.body?.data?.id || req.query?.id;
+    // 1. Identificar o tópico
+    const topic = req.query.topic || req.body.topic || req.body.type || req.query.type;
+
+    // 2. Se for merchant_order, apenas logar e ignorar
+    if (topic === "merchant_order") {
+      console.log("Merchant order recebido, ignorando conforme solicitado.");
+      return res.sendStatus(200);
+    }
+
+    // 3. Processar apenas eventos de pagamento
+    if (topic !== "payment" && topic !== "payment") {
+       // Se não for explicitamente payment, mas tivermos data.id, podemos tentar processar
+       if (!req.body?.data?.id && !req.query?.id && !req.query["data.id"]) {
+         console.log("Tópico desconhecido e sem ID de pagamento, ignorando:", topic);
+         return res.sendStatus(200);
+       }
+    }
+
+    // 4. Pegar paymentId de múltiplas fontes possíveis
+    const paymentId = req.body?.data?.id || req.query?.id || req.query["data.id"];
 
     if (!paymentId || isNaN(Number(paymentId))) {
       console.log('Webhook ignorado: paymentId inválido ou ausente');
       return res.sendStatus(200);
     }
 
-    console.log("Payment ID:", paymentId);
+    console.log("Processando Payment ID:", paymentId);
 
     const payment = new Payment(client);
     const paymentInfo = await payment.get({ id: String(paymentId) });
 
+    console.log("Status do pagamento no MP:", paymentInfo.status);
+    console.log("Referência Externa (Pedido ID):", paymentInfo.external_reference);
+
     const status = paymentInfo.status;
     const orderId = paymentInfo.external_reference;
-
-    console.log("Pedido ID:", orderId);
-    console.log("Status Mercado Pago:", status);
 
     if (orderId) {
       const updateData = {
@@ -122,15 +146,24 @@ app.post('/api/payments/webhook', async (req, res) => {
 
       if (orderStatus) {
         updateData.status = orderStatus;
-        const orderRef = doc(db, 'pedidos', orderId);
-        await updateDoc(orderRef, updateData);
-        console.log("Pedido atualizado com sucesso:", orderId);
+        try {
+          const orderRef = doc(db, 'pedidos', orderId);
+          await updateDoc(orderRef, updateData);
+          console.log("Pedido atualizado com sucesso:", orderId, "Status:", orderStatus);
+        } catch (dbError) {
+          console.error("ERRO AO ATUALIZAR FIRESTORE:", dbError);
+          // Mesmo com erro de banco, retornamos 200 para o MP parar de tentar
+        }
+      } else {
+        console.log("Status não mapeado para atualização de pedido:", status);
       }
+    } else {
+      console.log("Webhook sem external_reference (orderId), ignorando atualização.");
     }
 
     return res.sendStatus(200);
   } catch (error) {
-    console.error('Erro no webhook:', error);
+    console.error('ERRO NO PROCESSAMENTO DO WEBHOOK:', error);
     return res.sendStatus(200);
   }
 });

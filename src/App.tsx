@@ -174,16 +174,26 @@ function Storefront() {
 
   // --- Computed ---
   const filteredProducts = useMemo(() => {
-    return allProducts.filter(p => {
-      const matchesCategory = selectedCategory === 'Todos' || p.category === selectedCategory;
-      const matchesSearch = safeLower(p.name).includes(safeLower(searchQuery));
-      let matchesPrice = true;
-      if (priceFilter === 'lte100') matchesPrice = p.price <= 100;
-      else if (priceFilter === '100to200') matchesPrice = p.price > 100 && p.price <= 200;
-      else if (priceFilter === 'gte200') matchesPrice = p.price > 200;
+    return allProducts
+      .filter(p => {
+        const matchesCategory = selectedCategory === 'Todos' || p.category === selectedCategory;
+        const matchesSearch = safeLower(p.name).includes(safeLower(searchQuery));
+        let matchesPrice = true;
+        if (priceFilter === 'lte100') matchesPrice = p.price <= 100;
+        else if (priceFilter === '100to200') matchesPrice = p.price > 100 && p.price <= 200;
+        else if (priceFilter === 'gte200') matchesPrice = p.price > 200;
 
-      return matchesCategory && matchesSearch && matchesPrice;
-    });
+        return matchesCategory && matchesSearch && matchesPrice;
+      })
+      .sort((a, b) => {
+        // Produtos esgotados ficam por último
+        const aSoldOut = a.soldOut === true;
+        const bSoldOut = b.soldOut === true;
+        
+        if (aSoldOut && !bSoldOut) return 1;
+        if (!aSoldOut && bSoldOut) return -1;
+        return 0;
+      });
   }, [allProducts, selectedCategory, searchQuery, priceFilter]);
 
   const cartSubtotal = cart.reduce((acc, item) => {

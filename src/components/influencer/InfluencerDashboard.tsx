@@ -74,41 +74,48 @@ export const InfluencerDashboard: React.FC<InfluencerDashboardProps> = ({ influe
     }).format(value);
   };
 
-  const formatDate = (sale: any) => {
-    try {
-      // Try to find a valid date value in various fields
-      const dateValue = sale?.criadoEm || sale?.createdAt || sale?.data || sale?.pagoEm || sale?.atualizadoEm || sale;
-      
-      if (!dateValue || dateValue === sale && typeof dateValue !== 'object' && typeof dateValue !== 'string') {
-        return "Data não informada";
+  const getValidDate = (pedido: any) => {
+    const possibleDates = [
+      pedido.criadoEm,
+      pedido.createdAt,
+      pedido.updatedAt,
+      pedido.pagoEm,
+      pedido.data
+    ];
+
+    for (const value of possibleDates) {
+      if (!value) continue;
+
+      // Firebase Timestamp
+      if (typeof value.toDate === "function") {
+        return value.toDate();
       }
 
-      let date: Date;
-
-      if (dateValue?.toDate && typeof dateValue.toDate === "function") {
-        date = dateValue.toDate();
-      } else if (dateValue?.seconds) {
-        date = new Date(dateValue.seconds * 1000);
-      } else if (dateValue instanceof Date) {
-        date = dateValue;
-      } else if (typeof dateValue === "string") {
-        date = new Date(dateValue);
-      } else {
-        return "Data não informada";
+      // Firestore timestamp object
+      if (value.seconds) {
+        return new Date(value.seconds * 1000);
       }
 
-      if (isNaN(date.getTime())) {
-        return "Data não informada";
-      }
+      // String/date
+      const parsed = new Date(value);
 
-      return date.toLocaleDateString("pt-BR") + " " + date.toLocaleTimeString("pt-BR", {
-        hour: "2-digit",
-        minute: "2-digit"
-      });
-    } catch (error) {
-      console.error("Erro ao formatar data:", sale, error);
-      return "Data não informada";
+      if (!isNaN(parsed.getTime())) {
+        return parsed;
+      }
     }
+
+    return null;
+  };
+
+  const formatDate = (sale: any) => {
+    const validDate = getValidDate(sale);
+    
+    if (!validDate) return "Data não informada";
+
+    return validDate.toLocaleDateString("pt-BR") + " " + validDate.toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit"
+    });
   };
 
   return (

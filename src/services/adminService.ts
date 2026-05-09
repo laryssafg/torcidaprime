@@ -167,6 +167,7 @@ export const adminService = {
         const saleData = cleanUndefined({
           type: 'sale',
           date: Timestamp.now(),
+          criadoEm: serverTimestamp(),
           productId: item.product?.id || 'unknown',
           productName,
           price: productPrice,
