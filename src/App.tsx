@@ -1104,6 +1104,8 @@ function CheckoutModal({
 
     setIsProcessing(true);
 
+    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+
     const orderToSave = {
       cliente: {
         nome: formData.customer.name,
@@ -1147,7 +1149,7 @@ function CheckoutModal({
       await adminService.recordSale(cart, coupon || null, discount);
 
       // POST to backend
-      const response = await fetch('http://localhost:3001/api/payments/create-preference', {
+      const response = await fetch(`${API_URL}/api/payments/create-preference`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
