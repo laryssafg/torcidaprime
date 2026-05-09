@@ -74,8 +74,11 @@ export interface OrderData {
     city: string;
     state: string;
   };
-  shipping: 'Retirada' | 'Entrega local' | 'Correios';
-  payment: 'Pix' | 'Cartão' | 'Dinheiro' | 'WhatsApp';
+  shipping: 'Sedex' | 'Entrega na estação' | 'Correios';
+  freteNome?: string;
+  freteValor?: number;
+  freteObservacao?: string;
+  payment: 'Pix' | 'Cartão' | 'Dinheiro' | 'WhatsApp' | 'Mercado Pago';
   observations?: string;
   coupon?: string;
   discountAmount: number;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { adminService } from '../../services/adminService';
 import { formatCurrency, safeLower, safeText } from '../../utils';
-import { ShoppingCart, User, Calendar, Tag, Search, Filter, ChevronDown, Package, Phone, Trash2 } from 'lucide-react';
+import { ShoppingCart, User, Calendar, Tag, Search, Filter, ChevronDown, Package, Phone, Trash2, Truck } from 'lucide-react';
 import { Timestamp } from 'firebase/firestore';
 
 export const SalesManagement: React.FC = () => {
@@ -69,6 +69,9 @@ export const SalesManagement: React.FC = () => {
       coupon: coupon.trim().toUpperCase(),
       items: items,
       total: total,
+      shippingName: order.freteNome || order.entrega || 'Nacional',
+      shippingValue: Number(order.freteValor || 0),
+      shippingObservation: order.freteObservacao || '',
       paymentMethod: order.formaPagamento || 'Site',
       status: order.status || 'concluído',
       isOrder: true // Forçamos para true para usar o layout azul em tudo
@@ -206,19 +209,22 @@ export const SalesManagement: React.FC = () => {
                         <Calendar size={14} className="text-neutral-500" />
                         {date.toLocaleDateString('pt-BR')} {date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                       </div>
+                      <div className="flex items-center gap-1.5 text-blue-400">
+                        <Truck size={14} />
+                        {safeText(sale.shippingName)} ({formatCurrency(sale.shippingValue)})
+                      </div>
                       {couponText && (
                         <div className="flex items-center gap-1.5 text-gold">
                           <Tag size={14} />
                           Cupom: {couponText}
                         </div>
                       )}
-                      {!couponText && (
-                        <div className="flex items-center gap-1.5 text-neutral-600">
-                          <Tag size={14} />
-                          Sem cupom
-                        </div>
-                      )}
                     </div>
+                    {sale.shippingObservation && (
+                      <div className="mt-2 text-[10px] text-blue-500/70 italic bg-blue-500/5 px-3 py-1.5 rounded-lg border border-blue-500/10 max-w-xl">
+                        Obs Entrega: {sale.shippingObservation}
+                      </div>
+                    )}
                   </div>
                 </div>
 

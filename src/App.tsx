@@ -28,7 +28,8 @@ import {
   MessageCircle,
   Plus,
   Minus,
-  Check
+  Check,
+  Info
 } from 'lucide-react';
 import {
   Category,
@@ -1083,6 +1084,14 @@ function CheckoutModal({
     discountAmount: discount
   });
 
+  const SHIPPING_OPTIONS = [
+    { id: 'Correios', name: 'Correios', price: 15.00, observation: '' },
+    { id: 'Entrega na estação', name: 'Entrega na estação', price: 9.38, observation: 'Nossa equipe entrará em contato para confirmar a entrega em até duas horas úteis, porém também fique com os nossos contatos para confirmar a entrega: WhatsApp 11948626304 / Instagram @torcida.primeofc' }
+  ];
+
+  const currentShipping = SHIPPING_OPTIONS.find(s => s.id === formData.shipping) || SHIPPING_OPTIONS[0];
+  const finalTotal = total + currentShipping.price;
+
   const handleFinalize = async () => {
     if (!formData.customer.name || !formData.customer.whatsapp) {
       alert('Por favor, preencha nome e WhatsApp.');
@@ -1110,8 +1119,11 @@ function CheckoutModal({
         cidade: formData.address.city,
         estado: formData.address.state
       },
-      entrega: formData.shipping,
-      formaPagamento: formData.payment,
+      entrega: currentShipping.name,
+      freteNome: currentShipping.name,
+      freteValor: currentShipping.price,
+      freteObservacao: currentShipping.observation,
+      formaPagamento: 'Mercado Pago',
       itens: cart.map(item => ({
         productId: item.product.id,
         productName: item.product.name,
@@ -1123,7 +1135,7 @@ function CheckoutModal({
       subtotal: total + discount,
       desconto: discount,
       cupom: coupon || null,
-      total: total,
+      total: finalTotal,
       status: 'Aguardando pagamento'
     };
 
@@ -1150,7 +1162,7 @@ function CheckoutModal({
             name: formData.customer.name,
             email: formData.customer.email
           },
-          total: total,
+          total: finalTotal,
           subtotal: total + discount,
           desconto: discount,
           cupom: coupon || null
@@ -1276,31 +1288,54 @@ function CheckoutModal({
           <div className="grid grid-cols-1 gap-8">
             <div>
               <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#fedf00] mb-4 italic flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-[#fedf00] rotate-45"></span> Entrega
+                <span className="w-1.5 h-1.5 bg-[#fedf00] rotate-45"></span> Opções de Entrega
               </h4>
               <div className="grid grid-cols-1 gap-2">
-                {['Correios', 'Transportadora'].map(ship => (
+                {SHIPPING_OPTIONS.map(option => (
                   <button
-                    key={ship}
+                    key={option.id}
                     type="button"
-                    onClick={() => setFormData({ ...formData, shipping: ship as any })}
-                    className={`py-3 px-4 rounded-xl border text-[10px] font-black uppercase italic tracking-widest transition-all flex items-center justify-between ${formData.shipping === ship ? 'bg-[#002776] border-[#002776] text-white shadow-lg shadow-[#002776]/10' : 'bg-black border-neutral-800 text-white/40 hover:border-neutral-700'}`}
+                    onClick={() => setFormData({ ...formData, shipping: option.id as any })}
+                    className={`py-4 px-5 rounded-xl border text-[10px] font-black uppercase italic tracking-widest transition-all flex items-center justify-between ${formData.shipping === option.id ? 'bg-[#002776] border-[#002776] text-white shadow-lg shadow-[#002776]/10' : 'bg-black border-neutral-800 text-white/40 hover:border-neutral-700'}`}
                   >
-                    {ship}
-                    {formData.shipping === ship && <Check className="w-3 h-3" />}
+                    <div className="flex flex-col items-start gap-1">
+                      <span>{option.name}</span>
+                      <span className="text-[9px] text-[#fedf00]">{formatCurrency(option.price)}</span>
+                    </div>
+                    {formData.shipping === option.id && <Check className="w-4 h-4" />}
                   </button>
                 ))}
               </div>
+              {currentShipping.observation && (
+                <div className="mt-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                  <p className="text-[10px] text-blue-400 font-bold leading-relaxed">
+                    <Info size={12} className="inline mr-2" />
+                    {currentShipping.observation}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
           <div className="pt-8 border-t border-neutral-800 bg-neutral-900 sticky bottom-0">
             <div className="bg-black border border-neutral-800 rounded-2xl p-6 mb-6">
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Total do Pedido</span>
-                {formData.coupon && <span className="bg-[#009b3a] text-[8px] px-2 py-1 rounded font-black text-white italic">CUPOM ATIVO</span>}
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Resumo do Pedido</span>
               </div>
-              <div className="text-3xl font-black italic tracking-tighter text-[#fedf00]">{formatCurrency(total)}</div>
+              <div className="space-y-2 mb-4">
+                <div className="flex justify-between text-[10px] font-bold text-white/60">
+                  <span>Produtos:</span>
+                  <span>{formatCurrency(total)}</span>
+                </div>
+                <div className="flex justify-between text-[10px] font-bold text-white/60">
+                  <span>Frete ({currentShipping.name}):</span>
+                  <span>{formatCurrency(currentShipping.price)}</span>
+                </div>
+              </div>
+              <div className="flex justify-between items-center pt-4 border-t border-neutral-800">
+                <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Total Final</span>
+                <div className="text-3xl font-black italic tracking-tighter text-[#fedf00]">{formatCurrency(finalTotal)}</div>
+              </div>
             </div>
 
             <button
