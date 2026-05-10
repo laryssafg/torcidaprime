@@ -58,9 +58,14 @@ export const AdminDashboard: React.FC = () => {
     return new Date();
   };
 
-  // Robust revenue calculation logic requested by user
+  // Filter paid sales for financial metrics
+  const paidSales = (Array.isArray(sales) ? sales : []).filter(pedido =>
+    String(pedido.status || "").trim().toLowerCase() === "pago"
+  );
+
+  // Robust revenue calculation logic requested by user - Only PAID orders
   const calculateTotalRevenue = () => {
-    return (Array.isArray(sales) ? sales : []).reduce((acc, pedido) => {
+    return paidSales.reduce((acc, pedido) => {
       const valorRaw = pedido.total ?? pedido.totalPedido ?? pedido.valorTotal ?? pedido.subtotal ?? 0;
       const valor = Number(valorRaw);
       return acc + (Number.isNaN(valor) ? 0 : valor);
@@ -85,7 +90,7 @@ export const AdminDashboard: React.FC = () => {
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
   
-  const monthlySales = sales.filter(sale => {
+  const monthlySales = paidSales.filter(sale => {
     const saleDate = getSaleDate(sale);
     return saleDate.getMonth() === currentMonth && saleDate.getFullYear() === currentYear;
   });
@@ -99,7 +104,7 @@ export const AdminDashboard: React.FC = () => {
 
   const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
   const chartData = months.map((month, index) => {
-    const monthSales = sales.filter(s => {
+    const monthSales = paidSales.filter(s => {
       const d = getSaleDate(s);
       return d.getMonth() === index && d.getFullYear() === currentYear;
     });
@@ -115,7 +120,7 @@ export const AdminDashboard: React.FC = () => {
   const popularProduct = [...products].sort((a, b) => (Number(b.salesCount) || 0) - (Number(a.salesCount) || 0))[0];
   
   const categorySales: Record<string, number> = {};
-  sales.forEach(sale => {
+  paidSales.forEach(sale => {
     const cat = safeText(sale.category || "Geral");
     categorySales[cat] = (categorySales[cat] || 0) + (Number(sale.qty) || 1);
   });
