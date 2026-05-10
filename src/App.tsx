@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Component, ErrorInfo, ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
@@ -58,19 +58,26 @@ import {
   getProductSizes
 } from './utils';
 
+// --- Error Boundary Component (Placeholder) ---
+function ErrorBoundary({ children }: { children: ReactNode }) {
+  return <>{children}</>;
+}
+
 // Main App Component with Router
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/admin" element={<AdminRoute />} />
-        <Route path="/influenciador" element={<InfluencerRoute />} />
-        <Route path="/pagamento/sucesso" element={<PagamentoSucesso />} />
-        <Route path="/pagamento/erro" element={<PagamentoErro />} />
-        <Route path="/pagamento/pendente" element={<PagamentoPendente />} />
-        <Route path="/*" element={<Storefront />} />
-      </Routes>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/admin" element={<AdminRoute />} />
+          <Route path="/influenciador" element={<InfluencerRoute />} />
+          <Route path="/pagamento/sucesso" element={<PagamentoSucesso />} />
+          <Route path="/pagamento/erro" element={<PagamentoErro />} />
+          <Route path="/pagamento/pendente" element={<PagamentoPendente />} />
+          <Route path="/*" element={<Storefront />} />
+        </Routes>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }
 
@@ -131,6 +138,7 @@ function Storefront() {
   const [couponInput, setCouponInput] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<any | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(20);
 
   // --- External Data Sync (Real-time) ---
   useEffect(() => {
@@ -164,6 +172,11 @@ function Storefront() {
       unsubscribeCoupons();
     };
   }, []);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setVisibleCount(20);
+  }, [selectedCategory, searchQuery, priceFilter]);
 
   // Prioritize dynamic products from Firebase
   const allProducts = useMemo(() => [...dbProducts, ...PRODUCTS], [dbProducts]);
@@ -250,6 +263,7 @@ function Storefront() {
                 alt="Logo"
                 className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"
+                loading="lazy"
               />
             </div>
             <div className="text-xl md:text-2xl font-black italic tracking-tighter flex items-center gap-1 uppercase">
@@ -357,6 +371,7 @@ function Storefront() {
                 src="https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&q=80&w=1920"
                 alt="Hero"
                 className="w-full h-full object-cover opacity-20"
+                loading="lazy"
               />
               <div className="absolute inset-0 bg-gradient-to-r from-[#002776]/60 to-black/80"></div>
             </div>
@@ -418,7 +433,7 @@ function Storefront() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
               <AnimatePresence mode="popLayout">
-                {filteredProducts.map((p) => (
+                {filteredProducts.slice(0, visibleCount).map((p) => (
                   <ProductCard
                     key={p.id}
                     product={p}
@@ -427,6 +442,17 @@ function Storefront() {
                 ))}
               </AnimatePresence>
             </div>
+
+            {visibleCount < filteredProducts.length && (
+              <div className="mt-12 flex justify-center">
+                <button
+                  onClick={() => setVisibleCount(prev => prev + 20)}
+                  className="bg-neutral-800 hover:bg-neutral-700 text-white px-12 h-14 rounded-xl text-xs font-black uppercase italic tracking-widest transition-all border border-neutral-700"
+                >
+                  Carregar Mais Produtos
+                </button>
+              </div>
+            )}
 
             {filteredProducts.length === 0 && (
               <div className="py-32 text-center">
@@ -475,6 +501,7 @@ function Storefront() {
                     alt="Logo"
                     className="w-full h-full object-cover"
                     referrerPolicy="no-referrer"
+                    loading="lazy"
                   />
                 </div>
                 <div className="text-2xl font-black italic tracking-tighter flex items-center gap-1 uppercase">
@@ -567,7 +594,6 @@ function ProductCard({ product, onView }: { product: Product, onView: () => void
 
   return (
     <motion.div
-      layout
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
@@ -580,6 +606,7 @@ function ProductCard({ product, onView }: { product: Product, onView: () => void
           alt={product.name}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           referrerPolicy="no-referrer"
+          loading="lazy"
         />
         {isSoldOut ? (
           <div className="absolute inset-0 bg-neutral-950/80 backdrop-blur-[1px] flex items-center justify-center">
@@ -723,6 +750,7 @@ function ProductModal({
                 src={images[activeImage] || images[0]}
                 alt={`${product.name} - ${activeImage + 1}`}
                 className="max-h-[60vh] w-full object-contain relative z-10 drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
+                loading="lazy"
               />
             </AnimatePresence>
 
@@ -753,7 +781,7 @@ function ProductModal({
                   onClick={() => setActiveImage(idx)}
                   className={`w-12 h-16 rounded-lg overflow-hidden border-2 transition-all ${activeImage === idx ? 'border-[#fedf00] scale-110' : 'border-neutral-800 opacity-50 hover:opacity-100'}`}
                 >
-                  <img src={img} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
+                  <img src={img} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
                 </button>
               ))}
             </div>
@@ -991,7 +1019,7 @@ function CartModal({
             cart.map(item => (
               <div key={item.cartId} className="flex gap-4 group bg-neutral-900 border border-neutral-800 p-4 rounded-xl">
                 <div className="w-20 h-24 bg-neutral-950 rounded-lg overflow-hidden flex-shrink-0">
-                  <img src={getProductMedia(item.product)[0]} alt={item.product?.name} className="w-full h-full object-cover" />
+                  <img src={getProductMedia(item.product)[0]} alt={item.product?.name} className="w-full h-full object-cover" loading="lazy" />
                 </div>
                 <div className="flex-grow min-w-0">
                   <div className="flex justify-between items-start mb-1 gap-2">
