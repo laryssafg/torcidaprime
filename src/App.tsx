@@ -200,12 +200,18 @@ function Storefront() {
         return matchesCategory && matchesSearch && matchesPrice;
       })
       .sort((a, b) => {
-        // Produtos esgotados ficam por último
+        // 1. Produtos esgotados ficam por último
         const aSoldOut = a.soldOut === true;
         const bSoldOut = b.soldOut === true;
-        
         if (aSoldOut && !bSoldOut) return 1;
         if (!aSoldOut && bSoldOut) return -1;
+        
+        // 2. Se for 'Todos' ou 'Brasil Copa', colocar populares primeiro
+        if (selectedCategory === 'Todos' || selectedCategory === Category.BRASIL) {
+          if (a.isPopular && !b.isPopular) return -1;
+          if (!a.isPopular && b.isPopular) return 1;
+        }
+
         return 0;
       });
   }, [allProducts, selectedCategory, searchQuery, priceFilter]);
