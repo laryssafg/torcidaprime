@@ -6,7 +6,10 @@ import {
   Trash2, 
   RefreshCw,
   User,
-  Percent
+  Percent,
+  Pencil,
+  Check,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -19,6 +22,8 @@ export const CouponManagement: React.FC = () => {
     responsible: '',
     discountPercent: ''
   });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingPercent, setEditingPercent] = useState<string>('');
 
   useEffect(() => {
     fetchCoupons();
@@ -52,6 +57,31 @@ export const CouponManagement: React.FC = () => {
     if (confirm('Excluir este cupom?')) {
       await adminService.deleteCoupon(id);
       fetchCoupons();
+    }
+  };
+
+  const startEdit = (coupon: any) => {
+    setEditingId(coupon.id);
+    setEditingPercent(String(coupon.discountPercent));
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditingPercent('');
+  };
+
+  const saveEdit = async (id: string) => {
+    const val = parseFloat(editingPercent);
+    if (isNaN(val) || val <= 0 || val > 100) {
+      alert('Informe uma porcentagem válida entre 1 e 100.');
+      return;
+    }
+    try {
+      await adminService.updateCoupon(id, val);
+      setEditingId(null);
+      fetchCoupons();
+    } catch {
+      alert('Erro ao atualizar cupom.');
     }
   };
 
@@ -140,7 +170,16 @@ export const CouponManagement: React.FC = () => {
           >
             {coupons.map((coupon) => (
               <div key={coupon.id} className="bg-neutral-900 border border-neutral-800 p-6 rounded-3xl relative group overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute top-0 right-0 p-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {editingId !== coupon.id && (
+                    <button 
+                      onClick={() => startEdit(coupon)}
+                      className="p-2 bg-blue-500/10 text-blue-400 rounded-xl hover:bg-blue-500 hover:text-white transition-all shadow-lg"
+                      title="Editar porcentagem"
+                    >
+                      <Pencil size={16} />
+                    </button>
+                  )}
                   <button 
                     onClick={() => handleDelete(coupon.id)}
                     className="p-2 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-lg"
@@ -160,19 +199,52 @@ export const CouponManagement: React.FC = () => {
                 </div>
                 
                 <div className="flex items-center justify-between">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-black text-gold">{coupon.discountPercent}</span>
-                    <span className="text-neutral-400 font-bold">%</span>
-                  </div>
-                  <div className="text-[10px] text-neutral-600 font-bold uppercase tracking-widest bg-black px-2 py-1 rounded-md border border-neutral-800">
-                    Desconto Ativo
-                  </div>
+                  {editingId === coupon.id ? (
+                    <div className="flex items-center gap-2 w-full">
+                      <div className="relative flex-1">
+                        <Percent className="absolute left-2 top-1/2 -translate-y-1/2 text-neutral-400 w-4 h-4" />
+                        <input
+                          type="number"
+                          min="1"
+                          max="100"
+                          value={editingPercent}
+                          onChange={e => setEditingPercent(e.target.value)}
+                          autoFocus
+                          className="w-full bg-neutral-800 border border-gold rounded-xl py-2 pl-8 pr-3 text-gold font-black text-xl focus:outline-none"
+                        />
+                      </div>
+                      <button
+                        onClick={() => saveEdit(coupon.id)}
+                        className="p-2 bg-green-500/20 text-green-400 rounded-xl hover:bg-green-500 hover:text-white transition-all"
+                        title="Salvar"
+                      >
+                        <Check size={18} />
+                      </button>
+                      <button
+                        onClick={cancelEdit}
+                        className="p-2 bg-neutral-700 text-neutral-400 rounded-xl hover:bg-neutral-600 transition-all"
+                        title="Cancelar"
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-3xl font-black text-gold">{coupon.discountPercent}</span>
+                        <span className="text-neutral-400 font-bold">%</span>
+                      </div>
+                      <div className="text-[10px] text-neutral-600 font-bold uppercase tracking-widest bg-black px-2 py-1 rounded-md border border-neutral-800">
+                        Desconto Ativo
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             ))}
             
             {coupons.length === 0 && !loading && (
-              <div className="col-span-full py-20 text-center text-neutral-500 border-2 border-dashed border-neutral-800 rounded-3x">
+              <div className="col-span-full py-20 text-center text-neutral-500 border-2 border-dashed border-neutral-800 rounded-3xl">
                 Nenhum cupom cadastrado ainda.
               </div>
             )}
@@ -182,3 +254,4 @@ export const CouponManagement: React.FC = () => {
     </div>
   );
 };
+

@@ -564,6 +564,7 @@ function Storefront() {
             setCouponInput={setCouponInput}
             applyCoupon={applyCoupon}
             discount={discountAmount}
+            appliedCoupon={appliedCoupon}
           />
         )}
         {isCheckoutOpen && (
@@ -604,7 +605,8 @@ function ProductCard({ product, onView }: { product: Product, onView: () => void
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
       whileHover={{ y: -4 }}
-      className="bg-[#151515] border border-neutral-800 p-4 rounded-xl flex flex-col group hover:border-[#009b3a] transition-all relative overflow-hidden"
+      onClick={onView}
+      className="bg-[#151515] border border-neutral-800 p-4 rounded-xl flex flex-col group hover:border-[#009b3a] transition-all relative overflow-hidden cursor-pointer"
     >
       <div className="relative aspect-[4/5] bg-neutral-900 rounded-lg overflow-hidden flex items-center justify-center">
         <img
@@ -981,7 +983,8 @@ function CartModal({
   couponInput,
   setCouponInput,
   applyCoupon,
-  discount
+  discount,
+  appliedCoupon
 }: {
   cart: CartItem[],
   subtotal: number,
@@ -993,6 +996,7 @@ function CartModal({
   setCouponInput: (v: string) => void,
   applyCoupon: () => void,
   discount: number,
+  appliedCoupon: any | null,
   key?: string | number
 }) {
   return (
@@ -1069,7 +1073,7 @@ function CartModal({
               </div>
               {discount > 0 && (
                 <div className="flex justify-between text-[11px] text-[#009b3a] font-black uppercase tracking-widest italic">
-                  <span>Cupom (25%)</span>
+                  <span>Cupom ({appliedCoupon?.discountPercent || 25}%)</span>
                   <span>- {formatCurrency(discount)}</span>
                 </div>
               )}

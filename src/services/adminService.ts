@@ -234,6 +234,15 @@ export const adminService = {
     }
   },
 
+  async updateCoupon(id: string, discountPercent: number) {
+    const path = `cupons/${id}`;
+    try {
+      await updateDoc(doc(db, 'cupons', id), { discountPercent });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, path);
+    }
+  },
+
   // Sales
   async recordSale(cart: CartItem[], couponCode?: string | null, discountAmount: number = 0) {
     const path = 'pedidos';
