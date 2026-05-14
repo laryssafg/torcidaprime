@@ -1083,9 +1083,25 @@ function CartModal({
               </div>
             </div>
 
+            {total < 100 && (
+              <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3">
+                <span className="text-red-400 font-black text-[10px] uppercase tracking-widest leading-snug">
+                  ⚠️ ATENÇÃO — Valor mínimo para pedido é de {formatCurrency(100)}
+                </span>
+              </div>
+            )}
+
             <button
-              onClick={onCheckout}
-              className="w-full bg-[#fedf00] text-black font-black py-5 rounded-xl uppercase tracking-tighter italic text-sm shadow-xl shadow-[#fedf00]/5 hover:translate-y-[-1px] transition-all flex items-center justify-center gap-3"
+              onClick={() => {
+                if (total < 100) return;
+                onCheckout();
+              }}
+              disabled={total < 100}
+              className={`w-full font-black py-5 rounded-xl uppercase tracking-tighter italic text-sm shadow-xl transition-all flex items-center justify-center gap-3 ${
+                total < 100
+                  ? 'bg-neutral-700 text-neutral-500 cursor-not-allowed opacity-60'
+                  : 'bg-[#fedf00] text-black shadow-[#fedf00]/5 hover:translate-y-[-1px]'
+              }`}
             >
               Finalizar Pedido <ChevronRight className="w-5 h-5" />
             </button>
