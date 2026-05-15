@@ -1199,9 +1199,6 @@ function CheckoutModal({
       // Create Order in Firestore
       const orderId = await adminService.createOrder(orderToSave);
 
-      // Record item-level sales for dashboard
-      await adminService.recordSale(cart, coupon || null, discount);
-
       // POST to backend
       const response = await fetch(`${API_URL}/api/payments/create-preference`, {
         method: 'POST',

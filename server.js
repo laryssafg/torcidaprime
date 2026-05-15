@@ -3,7 +3,7 @@ import cors from 'cors';
 import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
 import dotenv from 'dotenv';
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, updateDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { getFirestore, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { readFileSync } from 'fs';
 
 dotenv.config();
@@ -16,32 +16,30 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const client = new MercadoPagoConfig({ 
-  accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN || '' 
+const client = new MercadoPagoConfig({
+  accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN || ''
 });
 
+// ─── CREATE PREFERENCE ────────────────────────────────────────────────────────
 app.post('/api/payments/create-preference', async (req, res) => {
   try {
-    const { items, orderId, customer, total, desconto } = req.body;
+    const { orderId, customer, total } = req.body;
 
     console.log("--- DEBUG CREATE PREFERENCE ---");
-    console.log("1. req.body completo:", req.body);
-    console.log("2. orderId:", orderId);
-    console.log("3. total recebido:", total);
-    console.log("4. desconto recebido:", desconto);
-    console.log("5. items recebidos:", items);
-    
+    console.log("orderId:", orderId);
+    console.log("total recebido:", total);
+
     if (!process.env.MERCADO_PAGO_ACCESS_TOKEN) {
       console.warn("MERCADO_PAGO_ACCESS_TOKEN não configurado no .env");
     }
 
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    const backendUrl = process.env.BACKEND_URL || "https://gorged-husband-saturday.ngrok-free.dev";
+    const backendUrl  = process.env.BACKEND_URL  || 'https://torcidaprime.onrender.com';
 
     const orderTotal = Number(total);
 
     if (isNaN(orderTotal) || orderTotal <= 0) {
-      return res.status(400).json({ error: 'O valor do pedido não pode ser zero ou negativo. Certifique-se de enviar o "total" no corpo da requisição.' });
+      return res.status(400).json({ error: 'O valor do pedido não pode ser zero ou negativo.' });
     }
 
     console.log("Total enviado ao Mercado Pago:", orderTotal);
@@ -57,19 +55,20 @@ app.post('/api/payments/create-preference', async (req, res) => {
         }
       ],
       payer: {
-        name: customer.name,
-        email: customer.email || 'email@exemplo.com',
+        name: customer?.name || 'Cliente',
+        email: customer?.email || 'email@exemplo.com',
       },
       back_urls: {
         success: `${frontendUrl}/pagamento/sucesso`,
         failure: `${frontendUrl}/pagamento/erro`,
         pending: `${frontendUrl}/pagamento/pendente`,
       },
+      auto_return: "approved",
       notification_url: `${backendUrl}/api/payments/webhook`,
       external_reference: orderId,
     };
 
-    console.log('6. body final enviado ao Mercado Pago:', JSON.stringify(preferenceBody, null, 2));
+    console.log("Body final enviado ao MP:", JSON.stringify(preferenceBody, null, 2));
 
     const preference = new Preference(client);
     const result = await preference.create({ body: preferenceBody });
@@ -81,93 +80,93 @@ app.post('/api/payments/create-preference', async (req, res) => {
   }
 });
 
+// ─── WEBHOOK ──────────────────────────────────────────────────────────────────
 app.post('/api/payments/webhook', async (req, res) => {
-  console.log("WEBHOOK CHEGOU");
+  console.log("=== WEBHOOK CHEGOU ===");
   console.log("Body:", JSON.stringify(req.body, null, 2));
   console.log("Query:", req.query);
-  
+
+  // Responder 200 imediatamente para o MP não reenviar
+  res.sendStatus(200);
+
   try {
-    // 1. Identificar o tópico
-    const topic = req.query.topic || req.body.topic || req.body.type || req.query.type;
+    const type  = req.body.type  || req.query.type  || req.body.topic || req.query.topic || '';
+    const topic = String(type).toLowerCase();
 
-    // 2. Se for merchant_order, apenas logar e ignorar
-    if (topic === "merchant_order") {
-      console.log("Merchant order recebido, ignorando conforme solicitado.");
-      return res.sendStatus(200);
+    // Ignorar merchant_order
+    if (topic === 'merchant_order') {
+      console.log("Merchant order ignorado.");
+      return;
     }
 
-    // 3. Processar apenas eventos de pagamento
-    if (topic !== "payment" && topic !== "payment") {
-       // Se não for explicitamente payment, mas tivermos data.id, podemos tentar processar
-       if (!req.body?.data?.id && !req.query?.id && !req.query["data.id"]) {
-         console.log("Tópico desconhecido e sem ID de pagamento, ignorando:", topic);
-         return res.sendStatus(200);
-       }
-    }
+    // Extrair paymentId de todas as fontes possíveis
+    const paymentId =
+      req.body?.data?.id ||
+      req.query['data.id'] ||
+      req.query.id ||
+      (typeof req.body.resource === 'string' && req.body.resource.includes('/payments/')
+        ? req.body.resource.split('/payments/')[1]
+        : null);
 
-    // 4. Pegar paymentId de múltiplas fontes possíveis
-    const paymentId = req.body?.data?.id || req.query?.id || req.query["data.id"];
+    console.log("Payment ID:", paymentId);
 
     if (!paymentId || isNaN(Number(paymentId))) {
-      console.log('Webhook ignorado: paymentId inválido ou ausente');
-      return res.sendStatus(200);
+      console.log("Webhook ignorado: paymentId inválido ou ausente.");
+      return;
     }
 
-    console.log("Processando Payment ID:", paymentId);
-
+    // Buscar pagamento no Mercado Pago
     const payment = new Payment(client);
     const paymentInfo = await payment.get({ id: String(paymentId) });
 
-    console.log("Status do pagamento no MP:", paymentInfo.status);
-    console.log("Referência Externa (Pedido ID):", paymentInfo.external_reference);
-
-    const status = paymentInfo.status;
+    const status  = paymentInfo.status;
     const orderId = paymentInfo.external_reference;
 
-    if (orderId) {
-      const updateData = {
-        mercadoPagoStatus: status,
-        mercadoPagoPaymentId: String(paymentId),
-        atualizadoEm: serverTimestamp()
-      };
+    console.log("Status Mercado Pago:", status);
+    console.log("Pedido ID:", orderId);
 
-      let orderStatus = '';
-
-      if (status === 'approved') {
-        orderStatus = 'Pago';
-        updateData.pagoEm = serverTimestamp();
-      } else if (status === 'pending' || status === 'in_process') {
-        orderStatus = 'Pendente';
-      } else if (status === 'rejected') {
-        orderStatus = 'Recusado';
-      } else if (status === 'cancelled') {
-        orderStatus = 'Cancelado';
-      }
-
-      if (orderStatus) {
-        updateData.status = orderStatus;
-        try {
-          const orderRef = doc(db, 'pedidos', orderId);
-          await updateDoc(orderRef, updateData);
-          console.log("Pedido atualizado com sucesso:", orderId, "Status:", orderStatus);
-        } catch (dbError) {
-          console.error("ERRO AO ATUALIZAR FIRESTORE:", dbError);
-          // Mesmo com erro de banco, retornamos 200 para o MP parar de tentar
-        }
-      } else {
-        console.log("Status não mapeado para atualização de pedido:", status);
-      }
-    } else {
-      console.log("Webhook sem external_reference (orderId), ignorando atualização.");
+    if (!orderId) {
+      console.log("Webhook sem external_reference, ignorando.");
+      return;
     }
 
-    return res.sendStatus(200);
+    // Mapear status MP → status interno
+    const statusMap = {
+      approved:   'Pago',
+      pending:    'Pendente',
+      in_process: 'Pendente',
+      rejected:   'Recusado',
+      cancelled:  'Cancelado',
+    };
+
+    const orderStatus = statusMap[status] || null;
+
+    if (!orderStatus) {
+      console.log("Status não mapeado:", status);
+      return;
+    }
+
+    const updateData = {
+      status:               orderStatus,
+      mercadoPagoStatus:    status,
+      mercadoPagoPaymentId: String(paymentId),
+      atualizadoEm:         serverTimestamp(),
+    };
+
+    if (status === 'approved') {
+      updateData.pagoEm = serverTimestamp();
+    }
+
+    const orderRef = doc(db, 'pedidos', orderId);
+    await updateDoc(orderRef, updateData);
+
+    console.log("Pedido atualizado para", orderStatus + ":", orderId);
   } catch (error) {
     console.error('ERRO NO PROCESSAMENTO DO WEBHOOK:', error);
-    return res.sendStatus(200);
   }
 });
 
+// ─── START ────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Backend rodando na porta ${PORT}`);
