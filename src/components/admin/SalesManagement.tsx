@@ -15,12 +15,28 @@ export const SalesManagement: React.FC = () => {
     loadSales();
   }, []);
 
+  // Prioridade: criadoEm > createdAt > dataPedido > data
+  // NUNCA usar: atualizadoEm, pagoEm, date_last_updated
   const getSaleDate = (order: any): Date => {
-    const rawDate = order.date || order.criadoEm || order.createdAt;
+    const rawDate =
+      order.criadoEm ||
+      order.createdAt ||
+      order.dataPedido ||
+      order.data;
+    if (!rawDate) return new Date(0); // data desconhecida → epoch, não 'agora'
     if (rawDate instanceof Timestamp) return rawDate.toDate();
     if (rawDate && typeof rawDate.toDate === 'function') return rawDate.toDate();
     if (typeof rawDate === 'string' || typeof rawDate === 'number') return new Date(rawDate);
-    return new Date();
+    return new Date(0);
+  };
+
+  const getPaidDate = (order: any): Date | null => {
+    const raw = order.pagoEm;
+    if (!raw) return null;
+    if (raw instanceof Timestamp) return raw.toDate();
+    if (raw && typeof raw.toDate === 'function') return raw.toDate();
+    if (typeof raw === 'string' || typeof raw === 'number') return new Date(raw);
+    return null;
   };
 
   const getCouponText = (order: any): string => {
@@ -58,6 +74,7 @@ export const SalesManagement: React.FC = () => {
       whatsapp:            order.cliente?.whatsapp || '',
       email:               order.cliente?.email || '',
       createdAt:           date,
+      paidAt:              getPaidDate(order),
       coupon,
       items,
       total,
@@ -196,8 +213,19 @@ export const SalesManagement: React.FC = () => {
                       )}
                       <div className="flex items-center gap-1.5">
                         <Calendar size={13} className="text-neutral-500" />
-                        {sale.createdAt.toLocaleDateString('pt-BR')} {sale.createdAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        <span>
+                          Pedido em: {sale.createdAt.getFullYear() > 2000
+                            ? `${sale.createdAt.toLocaleDateString('pt-BR')} ${sale.createdAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+                            : 'Data desconhecida'
+                          }
+                        </span>
                       </div>
+                      {sale.paidAt && (
+                        <div className="flex items-center gap-1.5 text-green-400">
+                          <Calendar size={13} />
+                          Pago em: {sale.paidAt.toLocaleDateString('pt-BR')} {sale.paidAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      )}
                       {sale.shippingName && (
                         <div className="flex items-center gap-1.5 text-blue-400">
                           <Truck size={13} />
