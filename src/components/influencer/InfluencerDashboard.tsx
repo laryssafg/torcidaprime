@@ -12,74 +12,11 @@ export const InfluencerDashboard: React.FC<InfluencerDashboardProps> = ({ influe
   const [sales, setSales] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadSales();
-  }, [influencer.cupom]);
-
-  const loadSales = async () => {
-    try {
-      setLoading(true);
-      const data = await influencerService.getSalesByCoupon(influencer.cupom);
-      
-      if (!data || !Array.isArray(data)) {
-        setSales([]);
-        setLoading(false);
-        return;
-      }
-
-      // Sort by date descending
-      const getSafeDate = (val: any) => {
-        if (!val) return new Date(0);
-        if (val?.toDate && typeof val.toDate === 'function') return val.toDate();
-        if (val?.seconds) return new Date(val.seconds * 1000);
-        const d = new Date(val);
-        return isNaN(d.getTime()) ? new Date(0) : d;
-      };
-
-      const sortedData = [...data].sort((a, b) => {
-        const dateA = getSafeDate(a.criadoEm);
-        const dateB = getSafeDate(b.criadoEm);
-        return dateB.getTime() - dateA.getTime();
-      });
-      setSales(sortedData);
-    } catch (err) {
-      console.error("Erro ao carregar vendas no dashboard:", err);
-      setSales([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const totalRevenue = (sales || []).reduce((acc, sale) => {
-    if (sale?.status === 'Pago') {
-      return acc + (Number(sale?.total) || 0);
-    }
-    return acc;
-  }, 0);
-
-  const totalOrders = (sales || []).length;
-  
-  // Count items if the payload has them, otherwise just use order count
-  const totalItemsSold = (sales || []).reduce((acc, sale) => {
-    if (sale?.items && Array.isArray(sale.items)) {
-      return acc + sale.items.reduce((sum: number, item: any) => sum + (Number(item?.quantity) || 1), 0);
-    }
-    return acc + 1;
-  }, 0);
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
-  };
-
   const getValidDate = (pedido: any) => {
     const possibleDates = [
       pedido.criadoEm,
       pedido.createdAt,
-      pedido.updatedAt,
-      pedido.pagoEm,
+      pedido.dataPedido,
       pedido.data
     ];
 
@@ -106,6 +43,75 @@ export const InfluencerDashboard: React.FC<InfluencerDashboardProps> = ({ influe
 
     return null;
   };
+
+  const getBaseProductsTotal = (order: any) => {
+    const items = order.items || order.itens || [];
+    return items.reduce((acc: number, item: any) => {
+      // Usar apenas o preço base, ignorando personalização (additionalPrice)
+      const price = Number(item.price || item.preco || 0);
+      const quantity = Number(item.quantity || item.quantidade || 1);
+      return acc + (price * quantity);
+    }, 0);
+  };
+
+  useEffect(() => {
+    loadSales();
+  }, [influencer.cupom]);
+
+  const loadSales = async () => {
+    try {
+      setLoading(true);
+      const data = await influencerService.getSalesByCoupon(influencer.cupom);
+      
+      if (!data || !Array.isArray(data)) {
+        setSales([]);
+        setLoading(false);
+        return;
+      }
+
+      // Sort by date descending
+      const sortedData = [...data].sort((a, b) => {
+        const dateA = getValidDate(a) || new Date(0);
+        const dateB = getValidDate(b) || new Date(0);
+        return dateB.getTime() - dateA.getTime();
+      });
+      setSales(sortedData);
+    } catch (err) {
+      console.error("Erro ao carregar vendas no dashboard:", err);
+      setSales([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  const totalRevenue = (sales || []).reduce((acc, sale) => {
+    // Somente pedidos "Pago" entram para o faturamento financeiro
+    if (sale?.status === 'Pago') {
+      const baseTotal = getBaseProductsTotal(sale);
+      // Comissão de 25% sobre o valor dos produtos
+      return acc + (baseTotal * 0.25);
+    }
+    return acc;
+  }, 0);
+
+  const totalOrders = (sales || []).length;
+  
+  const totalItemsSold = (sales || []).reduce((acc, sale) => {
+    const items = sale.items || sale.itens || [];
+    if (Array.isArray(items)) {
+      return acc + items.reduce((sum: number, item: any) => sum + (Number(item?.quantity || item?.quantidade) || 1), 0);
+    }
+    return acc + 1;
+  }, 0);
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  };
+
 
   const formatDate = (sale: any) => {
     const validDate = getValidDate(sale);
@@ -211,7 +217,7 @@ export const InfluencerDashboard: React.FC<InfluencerDashboardProps> = ({ influe
                             <div className="font-semibold">{sale.cliente?.nome || 'Cliente não identificado'}</div>
                           </td>
                           <td className="p-4 font-bold text-[#fedf00]">
-                            {formatCurrency(Number(sale.total) || 0)}
+                            {formatCurrency(getBaseProductsTotal(sale) * 0.25)}
                           </td>
                           <td className="p-4">
                             <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
