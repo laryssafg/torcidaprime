@@ -360,6 +360,13 @@ function Storefront() {
                 <span className="opacity-30 text-[9px]">{allProducts.filter(p => cat === 'Todos' || p.category === cat).length}</span>
               </button>
             ))}
+            <button
+              onClick={() => { setSelectedCategory('Personalizacao' as any); setSearchQuery(''); }}
+              className={`flex items-center justify-between text-[11px] font-bold uppercase tracking-wider py-2 px-3 rounded-lg transition-all ${selectedCategory === 'Personalizacao' ? 'bg-neutral-800 text-[#fedf00]' : 'text-white/60 hover:text-white hover:bg-neutral-900'}`}
+            >
+              <span>Personalização</span>
+              <span className="opacity-35 text-[9px]">✨</span>
+            </button>
           </div>
 
           <h3 className="text-[10px] uppercase tracking-[0.2em] text-[#fedf00] font-black mb-6 italic flex items-center gap-2">
@@ -386,6 +393,10 @@ function Storefront() {
 
         {/* MAIN SECTION (CENTER) */}
         <div className="flex-1 flex flex-col overflow-y-auto overflow-x-hidden h-[calc(100vh-64px)] scrollbar-hide">
+          {selectedCategory === ('Personalizacao' as any) ? (
+            <PersonalizationView />
+          ) : (
+            <>
           {/* HERO BANNER */}
           <section className="relative h-64 md:h-80 bg-neutral-950 flex items-center shrink-0 border-b border-neutral-800 overflow-hidden">
             <div className="absolute inset-0 z-0">
@@ -490,6 +501,8 @@ function Storefront() {
               </div>
             )}
           </div>
+            </>
+          )}
 
           {/* FOOTER */}
           <footer className="mt-auto h-12 bg-neutral-950 border-t border-neutral-800 flex items-center justify-between px-8 text-[9px] uppercase tracking-[0.2em] text-white/40 font-medium shrink-0">
@@ -542,6 +555,13 @@ function Storefront() {
                   <ChevronRight className="w-4 h-4 opacity-30" />
                 </button>
               ))}
+              <button
+                onClick={() => { setSelectedCategory('Personalizacao' as any); setSearchQuery(''); setIsMenuOpen(false); }}
+                className={`flex items-center justify-between text-base font-black uppercase tracking-tighter py-4 border-b border-neutral-800 transition-all ${selectedCategory === 'Personalizacao' ? 'text-[#fedf00]' : 'text-white/60'}`}
+              >
+                <span>Personalização</span>
+                <ChevronRight className="w-4 h-4 opacity-30" />
+              </button>
               <a
                 href="/admin"
                 className="flex items-center justify-between text-base font-black uppercase tracking-tighter py-6 text-gold border-b border-neutral-800"
@@ -1498,6 +1518,395 @@ function PagamentoPendente() {
           </a>
         </div>
       </div>
+    </div>
+  );
+}
+
+function PersonalizationView() {
+  const [orderCode, setOrderCode] = useState('');
+  const [order, setOrder] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  
+  // Form states
+  const [selectedItemIndex, setSelectedItemIndex] = useState<number>(-1);
+  const [persType, setPersType] = useState<'name_number' | 'name_or_number' | 'phrase' | ''>('');
+  const [persName, setPersName] = useState('');
+  const [persNumber, setPersNumber] = useState('');
+  const [persPhrase, setPersPhrase] = useState('');
+  const [persObservation, setPersObservation] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [success, setSuccess] = useState(false);
+
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+
+  const handleSearchOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!orderCode.trim()) return;
+    setLoading(true);
+    setError('');
+    setOrder(null);
+    setSelectedItemIndex(-1);
+    
+    try {
+      const res = await fetch(`${API_URL}/api/pedidos/buscar/${orderCode.trim()}`);
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Erro ao buscar pedido.');
+      }
+      const data = await res.json();
+      setOrder(data);
+    } catch (err: any) {
+      setError(err.message || 'Erro ao buscar pedido. Verifique o código.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getPrice = () => {
+    if (persType === 'name_or_number') return 40;
+    if (persType === 'name_number') return 60;
+    if (persType === 'phrase') return 80;
+    return 0;
+  };
+
+  const handleSubmitPers = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedItemIndex === -1) {
+      alert('Selecione o produto que deseja personalizar.');
+      return;
+    }
+    if (!persType) {
+      alert('Selecione o tipo de personalização.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const typeLabel = 
+        persType === 'name_or_number' ? 'Só nome ou só número' :
+        persType === 'name_number' ? 'Nome e número' :
+        'Frase';
+
+      const payload = {
+        orderId: order.id,
+        itemIndex: selectedItemIndex,
+        personalization: {
+          type: typeLabel,
+          name: persName,
+          number: persNumber,
+          phrase: persPhrase,
+          observation: persObservation,
+          price: getPrice()
+        }
+      };
+
+      const res = await fetch(`${API_URL}/api/pedidos/personalizar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Erro ao registrar personalização.');
+      }
+
+      // Gerar preferência de pagamento do Mercado Pago
+      const paymentRes = await fetch(`${API_URL}/api/payments/create-preference`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: order.id,
+          customer: {
+            name: order.cliente?.nome || order.cliente?.name || 'Cliente',
+            email: order.cliente?.email || 'email@exemplo.com'
+          },
+          total: getPrice()
+        })
+      });
+
+      if (!paymentRes.ok) {
+        throw new Error('Erro ao gerar link de pagamento.');
+      }
+
+      const paymentData = await paymentRes.json();
+      if (paymentData.init_point) {
+        setSuccess(true);
+        setTimeout(() => {
+          window.location.href = paymentData.init_point;
+        }, 1500);
+      } else {
+        throw new Error('Link de pagamento inválido.');
+      }
+
+    } catch (err: any) {
+      alert(err.message || 'Erro ao registrar personalização.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (success) {
+    return (
+      <div className="p-8 max-w-2xl mx-auto text-center py-20 bg-neutral-900 border border-neutral-800 rounded-3xl mt-10">
+        <div className="w-16 h-16 bg-green-500/10 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
+          <Check className="w-8 h-8" />
+        </div>
+        <h2 className="text-2xl font-black italic uppercase text-white mb-2">Solicitação Enviada!</h2>
+        <p className="text-sm text-white/60 mb-8 uppercase font-bold tracking-wider">
+          A personalização foi atrelada ao seu pedido com sucesso. Estamos te redirecionando para o Mercado Pago para realizar o pagamento do valor adicional de R$ {getPrice().toFixed(2)}.
+        </p>
+        <button
+          onClick={() => {
+            setSuccess(false);
+            setOrder(null);
+            setOrderCode('');
+            setPersType('');
+            setPersName('');
+            setPersNumber('');
+            setPersPhrase('');
+            setPersObservation('');
+          }}
+          className="bg-[#fedf00] text-black font-black uppercase italic px-8 py-3 rounded-full text-xs hover:bg-gold/90 transition-colors"
+        >
+          Nova Personalização
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-8 max-w-3xl mx-auto mt-6">
+      <div className="mb-8 text-center md:text-left">
+        <h2 className="text-3xl font-black italic tracking-tighter uppercase mb-2">
+          Personalização de Pedido
+        </h2>
+        <p className="text-xs text-white/50 uppercase font-black tracking-widest">
+          Esqueceu de personalizar no momento da compra? Solicite agora mesmo!
+        </p>
+        <div className="h-1 w-16 bg-[#fedf00] rounded-full mt-3 mx-auto md:mx-0"></div>
+      </div>
+
+      {!order ? (
+        <form onSubmit={handleSearchOrder} className="bg-neutral-900 border border-neutral-800 rounded-3xl p-8 space-y-6">
+          <div>
+            <label className="block text-xs font-black uppercase tracking-widest text-[#fedf00] mb-3">
+              Insira o código do seu pedido
+            </label>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="text"
+                required
+                value={orderCode}
+                onChange={e => setOrderCode(e.target.value)}
+                placeholder="Ex: #WUHXF2 ou WUHXF2"
+                className="flex-1 bg-black border border-neutral-800 rounded-xl px-4 py-3.5 text-sm font-bold uppercase tracking-widest focus:outline-none focus:border-[#fedf00] transition-colors"
+              />
+              <button
+                type="submit"
+                disabled={loading}
+                className="bg-white text-black font-black uppercase italic px-8 py-3.5 rounded-xl text-xs hover:bg-[#fedf00] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {loading ? 'Buscando...' : 'Buscar Pedido'}
+              </button>
+            </div>
+            {error && (
+              <p className="text-xs text-red-500 font-bold uppercase tracking-wider mt-3">
+                ⚠️ {error}
+              </p>
+            )}
+          </div>
+        </form>
+      ) : (
+        <form onSubmit={handleSubmitPers} className="bg-neutral-900 border border-neutral-800 rounded-3xl p-8 space-y-8">
+          <div className="border-b border-neutral-800 pb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <div className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1">Pedido Encontrado</div>
+              <h3 className="text-xl font-black text-white italic">
+                #{order.id.slice(-6).toUpperCase()}
+              </h3>
+              <p className="text-xs text-white/60 font-medium mt-1">
+                Cliente: {order.cliente?.nome || order.cliente?.name || 'Não informado'} | WhatsApp: {order.cliente?.whatsapp || '-'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => { setOrder(null); setOrderCode(''); }}
+              className="text-xs font-black text-[#fedf00] uppercase tracking-widest hover:underline"
+            >
+              Buscar outro código
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            <label className="block text-xs font-black uppercase tracking-widest text-[#fedf00]">
+              1. Escolha o produto a personalizar
+            </label>
+            <div className="grid gap-3">
+              {order.itens.map((item: any, idx: number) => (
+                <label
+                  key={idx}
+                  className={`flex items-center justify-between p-4 border rounded-xl cursor-pointer transition-all ${
+                    selectedItemIndex === idx
+                      ? 'bg-[#fedf00]/5 border-[#fedf00]'
+                      : 'bg-black/20 border-neutral-800 hover:border-neutral-700'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="radio"
+                      name="selectedProduct"
+                      checked={selectedItemIndex === idx}
+                      onChange={() => setSelectedItemIndex(idx)}
+                      className="accent-[#fedf00]"
+                    />
+                    <div>
+                      <span className="font-bold text-sm text-white">
+                        {item.quantity}x {item.productName || item.nome}
+                      </span>
+                      {item.size && (
+                        <span className="ml-2 text-[10px] bg-neutral-800 px-2 py-0.5 rounded text-neutral-400 font-bold uppercase">
+                          TAM: {item.size}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <label className="block text-xs font-black uppercase tracking-widest text-[#fedf00]">
+              2. Escolha o tipo de personalização
+            </label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[
+                {
+                  id: 'name_or_number',
+                  title: 'Só Nome ou Só Número',
+                  price: 40,
+                  desc: 'Adicione apenas um nome ou apenas o número nas costas.'
+                },
+                {
+                  id: 'name_number',
+                  title: 'Nome e Número',
+                  price: 60,
+                  desc: 'Personalização clássica oficial com nome e número.'
+                },
+                {
+                  id: 'phrase',
+                  title: 'Frase nas Costas',
+                  price: 80,
+                  desc: 'Adicione uma frase personalizada (até 5 linhas).'
+                }
+              ].map(opt => (
+                <div
+                  key={opt.id}
+                  onClick={() => setPersType(opt.id as any)}
+                  className={`p-5 border rounded-2xl cursor-pointer transition-all flex flex-col justify-between h-full ${
+                    persType === opt.id
+                      ? 'bg-[#fedf00]/5 border-[#fedf00] shadow-lg shadow-gold/5'
+                      : 'bg-black/20 border-neutral-800 hover:border-neutral-700'
+                  }`}
+                >
+                  <div>
+                    <h4 className="font-black text-sm uppercase tracking-tight text-white mb-2">{opt.title}</h4>
+                    <p className="text-[10px] text-white/50 leading-relaxed font-semibold uppercase">{opt.desc}</p>
+                  </div>
+                  <div className="mt-6">
+                    <span className="text-[#fedf00] font-black text-lg italic">R$ {opt.price.toFixed(2)}</span>
+                    <span className="text-[9px] text-white/30 font-bold uppercase tracking-wider block mt-1">Prazo: 7 dias</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {persType && (
+            <div className="space-y-6 bg-black/40 border border-neutral-800/80 p-6 rounded-2xl">
+              {(persType === 'name_number' || persType === 'name_or_number') && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">
+                      Nome na camisa
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={12}
+                      value={persName}
+                      onChange={e => setPersName(e.target.value)}
+                      placeholder="Ex: NEYMAR JR"
+                      className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#fedf00] uppercase font-bold text-white"
+                    />
+                    <span className="text-[9px] text-neutral-500 font-medium mt-1 block">Máximo 12 letras</span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">
+                      Número
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={2}
+                      value={persNumber}
+                      onChange={e => setPersNumber(e.target.value)}
+                      placeholder="Ex: 10"
+                      className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#fedf00] font-bold text-white"
+                    />
+                    <span className="text-[9px] text-neutral-500 font-medium mt-1 block">Máximo 2 dígitos</span>
+                  </div>
+                </div>
+              )}
+
+              {persType === 'phrase' && (
+                <div>
+                  <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">
+                    Frase para Personalizar
+                  </label>
+                  <textarea
+                    rows={3}
+                    maxLength={60}
+                    value={persPhrase}
+                    onChange={e => setPersPhrase(e.target.value)}
+                    placeholder="Escreva a frase aqui (Use quebras de linha para separar as linhas - Máx 5 linhas)"
+                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#fedf00] text-white font-medium"
+                  />
+                  <span className="text-[9px] text-neutral-500 font-medium mt-1 block">Máx 5 linhas, 12 letras por linha</span>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">
+                  Observações Extras (Opcional)
+                </label>
+                <input
+                  type="text"
+                  value={persObservation}
+                  onChange={e => setPersObservation(e.target.value)}
+                  placeholder="Ex: Detalhes sobre a fonte, cor ou posição"
+                  className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#fedf00] text-white"
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="pt-6 border-t border-neutral-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="text-center sm:text-left">
+              <span className="text-neutral-500 text-xs font-bold uppercase tracking-widest block">Total Adicional</span>
+              <span className="text-[#fedf00] text-2xl font-black italic">R$ {getPrice().toFixed(2)}</span>
+            </div>
+            <button
+              type="submit"
+              disabled={saving || !persType || selectedItemIndex === -1}
+              className="w-full sm:w-auto bg-[#fedf00] text-black font-black uppercase italic px-10 py-4 rounded-xl text-xs hover:bg-[#fedf00]/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {saving ? 'Registrando...' : 'Confirmar e Enviar'}
+            </button>
+          </div>
+        </form>
+      )}
     </div>
   );
 }
