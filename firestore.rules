@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function ehAdmin() {
+      return request.auth != null && 
+             request.auth.token.email == 'torcidaprime01@gmail.com';
+    }
+
+    match /pedidos/{pedidoId} {
+      allow create: if true;
+      allow read, update, delete: if ehAdmin();
+    }
+
+    match /produtos/{produtoId} {
+      allow read: if true;
+      allow write: if ehAdmin();
+    }
+
+    match /cupons/{cupomId} {
+      allow read: if true;
+      allow write: if ehAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if ehAdmin();
+    }
+  }
+}
