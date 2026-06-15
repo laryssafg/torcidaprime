@@ -179,7 +179,9 @@ function Storefront() {
   }, [selectedCategory, searchQuery, priceFilter]);
 
   // Prioritize dynamic products from Firebase
-  const allProducts = useMemo(() => [...dbProducts, ...PRODUCTS], [dbProducts]);
+  const allProducts = useMemo(() => {
+    return dbProducts.length > 0 ? dbProducts : PRODUCTS;
+  }, [dbProducts]);
 
   // --- Persistence ---
   useEffect(() => {
@@ -355,7 +357,7 @@ function Storefront() {
                 className={`flex items-center justify-between text-[11px] font-bold uppercase tracking-wider py-2 px-3 rounded-lg transition-all ${selectedCategory === cat ? 'bg-neutral-800 text-[#fedf00]' : 'text-white/60 hover:text-white hover:bg-neutral-900'}`}
               >
                 <span>{cat}</span>
-                <span className="opacity-30 text-[9px]">{PRODUCTS.filter(p => cat === 'Todos' || p.category === cat).length}</span>
+                <span className="opacity-30 text-[9px]">{allProducts.filter(p => cat === 'Todos' || p.category === cat).length}</span>
               </button>
             ))}
           </div>
