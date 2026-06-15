@@ -115,6 +115,15 @@ export const adminService = {
     try {
       const docRef = await addDoc(collection(db, path), cleanUndefined({
         ...product,
+        nome: product.name,
+        preco: Number(product.price),
+        categoria: product.category,
+        imagens: product.images || [],
+        tamanhos: product.sizes || [],
+        personalizacao: Boolean(product.personalizable),
+        descricao: product.description || '',
+        esgotado: Boolean(product.soldOut),
+        ativo: product.active !== false,
         salesCount: 0,
         totalRevenue: 0,
         updatedAt: Timestamp.now(),
@@ -136,8 +145,20 @@ export const adminService = {
     const path = `produtos/${id}`;
     try {
       const docRef = doc(db, 'produtos', id);
+      
+      const updateData: any = { ...data };
+      if (data.name !== undefined) updateData.nome = data.name;
+      if (data.price !== undefined) updateData.preco = Number(data.price);
+      if (data.category !== undefined) updateData.categoria = data.category;
+      if (data.images !== undefined) updateData.imagens = data.images;
+      if (data.sizes !== undefined) updateData.tamanhos = data.sizes;
+      if (data.personalizable !== undefined) updateData.personalizacao = Boolean(data.personalizable);
+      if (data.description !== undefined) updateData.descricao = data.description;
+      if (data.soldOut !== undefined) updateData.esgotado = Boolean(data.soldOut);
+      if (data.active !== undefined) updateData.ativo = data.active !== false;
+
       await updateDoc(docRef, cleanUndefined({
-        ...data,
+        ...updateData,
         updatedAt: Timestamp.now(),
       }));
     } catch (error) {
