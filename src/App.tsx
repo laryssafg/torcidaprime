@@ -1168,14 +1168,15 @@ function CheckoutModal({
   const [formData, setFormData] = useState<OrderData>({
     customer: { name: '', whatsapp: '', email: '' },
     address: { cep: '', street: '', number: '', neighborhood: '', city: '', state: '' },
-    shipping: 'Correios',
+    shipping: 'Sedex',
     payment: 'Mercado Pago',
     coupon: coupon || undefined,
     discountAmount: discount
   });
 
   const SHIPPING_OPTIONS = [
-    { id: 'Correios', name: 'Correios', price: 15.00, observation: '' },
+    { id: 'Sedex', name: 'Sedex', price: 30.00, observation: '' },
+    { id: 'Motoboy', name: 'Motoboy', price: 20.00, observation: '' },
     { id: 'Entrega na estação', name: 'Entrega na estação', price: 9.38, observation: 'Nossa equipe entrará em contato para confirmar a entrega em até duas horas úteis, porém também fique com os nossos contatos para confirmar a entrega: WhatsApp 11948626304 / Instagram @torcida.primeofc' }
   ];
 

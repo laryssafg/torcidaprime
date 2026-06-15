@@ -74,7 +74,7 @@ export interface OrderData {
     city: string;
     state: string;
   };
-  shipping: 'Sedex' | 'Entrega na estação' | 'Correios';
+  shipping: 'Sedex' | 'Motoboy' | 'Entrega na estação';
   freteNome?: string;
   freteValor?: number;
   freteObservacao?: string;
