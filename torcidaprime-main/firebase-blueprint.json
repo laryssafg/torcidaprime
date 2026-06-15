@@ -1,0 +1,105 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "Store product information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "images": { "type": "array", "items": { "type": "string" } },
+        "category": { "type": "string" },
+        "sizes": { "type": "array", "items": { "type": "string" } },
+        "personalizable": { "type": "boolean" },
+        "description": { "type": "string" },
+        "soldOut": { "type": "boolean" },
+        "salesCount": { "type": "number" },
+        "totalRevenue": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "price", "category"]
+    },
+    "Coupon": {
+      "title": "Coupon",
+      "description": "Discount coupons",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "responsible": { "type": "string" },
+        "discountPercent": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["code", "discountPercent"]
+    },
+    "Sale": {
+      "title": "Sale",
+      "description": "Completed sales for dashboard tracking",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "productId": { "type": "string" },
+        "productName": { "type": "string" },
+        "price": { "type": "number" },
+        "qty": { "type": "number" },
+        "couponCode": { "type": "string" },
+        "discountAmount": { "type": "number" },
+        "liquidProfit": { "type": "number" },
+        "category": { "type": "string" }
+      },
+      "required": ["date", "productId", "price", "liquidProfit"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Full order information including customer and shipping details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "cliente": {
+          "type": "object",
+          "properties": {
+            "nome": { "type": "string" },
+            "whatsapp": { "type": "string" },
+            "email": { "type": "string" }
+          }
+        },
+        "endereco": {
+          "type": "object",
+          "properties": {
+            "cep": { "type": "string" },
+            "rua": { "type": "string" },
+            "numero": { "type": "string" },
+            "complemento": { "type": "string" },
+            "bairro": { "type": "string" },
+            "cidade": { "type": "string" },
+            "estado": { "type": "string" }
+          }
+        },
+        "entrega": { "type": "string" },
+        "formaPagamento": { "type": "string" },
+        "itens": { "type": "array" },
+        "subtotal": { "type": "number" },
+        "desconto": { "type": "number" },
+        "cupom": { "type": "string" },
+        "total": { "type": "number" },
+        "status": { "type": "string", "enum": ["novo", "pago", "enviado", "cancelado"] },
+        "criadoEm": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "firestore": {
+    "/produtos/{productId}": {
+      "schema": "Product",
+      "description": "Collection of all items for sale"
+    },
+    "/cupons/{couponId}": {
+      "schema": "Coupon",
+      "description": "Store discount codes"
+    },
+    "/pedidos/{orderId}": {
+      "schema": "Order",
+      "description": "Log of finalized customer orders"
+    }
+  }
+}
