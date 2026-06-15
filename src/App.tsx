@@ -290,7 +290,7 @@ function Storefront() {
           ].map(item => (
             <button
               key={item.label}
-              onClick={() => setSelectedCategory(item.cat as any)}
+              onClick={() => { setSelectedCategory(item.cat as any); setSearchQuery(''); }}
               className={`hover:text-[#fedf00] transition-colors ${selectedCategory === item.cat ? 'text-[#fedf00]' : ''}`}
             >
               {item.label}
@@ -330,6 +330,20 @@ function Storefront() {
       <main className="flex-1 flex overflow-hidden pt-16 h-full">
         {/* ASIDE FILTERS (LEFT) */}
         <aside className="hidden lg:flex w-64 bg-[#0a0a0a] flex-col p-6 border-r border-neutral-800 sticky top-16 h-[calc(100vh-64px)] shrink-0">
+          <h3 className="text-[10px] uppercase tracking-[0.2em] text-[#fedf00] font-black mb-4 italic flex items-center gap-2">
+            <span className="w-1.5 h-1.5 bg-[#fedf00] rotate-45"></span> Buscar Produto
+          </h3>
+          <div className="relative group mb-8">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 group-focus-within:text-[#fedf00] transition-colors" />
+            <input
+              type="text"
+              placeholder="BUSCAR PELO NOME..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-2.5 bg-neutral-900 border border-neutral-800 rounded-lg focus:outline-none focus:border-[#fedf00] transition-all text-xs font-bold uppercase tracking-wider text-white"
+            />
+          </div>
+
           <h3 className="text-[10px] uppercase tracking-[0.2em] text-[#fedf00] font-black mb-6 italic flex items-center gap-2">
             <span className="w-1.5 h-1.5 bg-[#fedf00] rotate-45"></span> Filtrar por Tipo
           </h3>
@@ -337,7 +351,7 @@ function Storefront() {
             {['Todos', ...Object.values(Category)].map(cat => (
               <button
                 key={cat}
-                onClick={() => setSelectedCategory(cat as any)}
+                onClick={() => { setSelectedCategory(cat as any); setSearchQuery(''); }}
                 className={`flex items-center justify-between text-[11px] font-bold uppercase tracking-wider py-2 px-3 rounded-lg transition-all ${selectedCategory === cat ? 'bg-neutral-800 text-[#fedf00]' : 'text-white/60 hover:text-white hover:bg-neutral-900'}`}
               >
                 <span>{cat}</span>
@@ -519,7 +533,7 @@ function Storefront() {
               {['Todos', ...Object.values(Category)].map(cat => (
                 <button
                   key={cat}
-                  onClick={() => { setSelectedCategory(cat as any); setIsMenuOpen(false); }}
+                  onClick={() => { setSelectedCategory(cat as any); setSearchQuery(''); setIsMenuOpen(false); }}
                   className={`flex items-center justify-between text-base font-black uppercase tracking-tighter py-4 border-b border-neutral-800 transition-all ${selectedCategory === cat ? 'text-[#fedf00]' : 'text-white/60'}`}
                 >
                   <span>{cat}</span>
