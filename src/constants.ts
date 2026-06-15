@@ -6,9 +6,9 @@ export const COUPON_DISCOUNT = 0.25;
 
 export const PERSONALIZATION_OPTIONS: Record<PersonalizationType, PersonalizationOption> = {
   [PersonalizationType.NONE]: { type: PersonalizationType.NONE, price: 0, limits: '' },
-  [PersonalizationType.NAME_NUMBER]: { type: PersonalizationType.NAME_NUMBER, price: 50, limits: 'Até 12 letras e 2 números' },
-  [PersonalizationType.NAME_OR_NUMBER]: { type: PersonalizationType.NAME_OR_NUMBER, price: 30, limits: 'Até 12 letras OU 2 números' },
-  [PersonalizationType.PHRASE]: { type: PersonalizationType.PHRASE, price: 80, limits: 'Até 5 linhas, 12 letras/linha' }
+  [PersonalizationType.NAME_NUMBER]: { type: PersonalizationType.NAME_NUMBER, price: 60, limits: 'Até 12 letras e 2 números (prazo 7 dias)' },
+  [PersonalizationType.NAME_OR_NUMBER]: { type: PersonalizationType.NAME_OR_NUMBER, price: 40, limits: 'Até 12 letras OU 2 números (prazo 7 dias)' },
+  [PersonalizationType.PHRASE]: { type: PersonalizationType.PHRASE, price: 80, limits: 'Até 5 linhas, 12 letras/linha (prazo 7 dias)' }
 };
 
 export const COLORS = {
