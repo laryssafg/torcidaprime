@@ -59,7 +59,7 @@ export const SalesManagement: React.FC = () => {
     // Itens do pedido
     const items: any[] = Array.isArray(order.itens) ? order.itens.map((item: any) => ({
       productName:    item.productName || item.nome || 'Produto',
-      size:           item.size || item.tamanho || '-',
+      size:           item.selectedSize || item.size || item.tamanho || '-',
       quantity:       Number(item.quantity || item.quantidade || 1),
       price:          Number(item.price || item.preco || 0),
       personalization: item.personalization || null,
