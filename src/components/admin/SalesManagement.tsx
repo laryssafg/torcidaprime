@@ -244,6 +244,21 @@ export const SalesManagement: React.FC = () => {
                         Obs: {sale.shippingObservation}
                       </div>
                     )}
+                    {sale.items && sale.items.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {sale.items.map((item: any, idx: number) => (
+                          <span key={idx} className="inline-flex items-center gap-1.5 bg-neutral-900 border border-neutral-800 text-neutral-300 text-xs px-2.5 py-1 rounded-lg">
+                            <span className="font-bold text-gold">{item.quantity}x</span>
+                            <span>{safeText(item.productName)}</span>
+                            {item.size && item.size !== '-' && (
+                              <span className="ml-1 bg-gold text-black font-extrabold text-[10px] px-1.5 py-0.5 rounded uppercase">
+                                TAM: {item.size}
+                              </span>
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 
