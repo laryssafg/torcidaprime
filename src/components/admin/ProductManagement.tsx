@@ -13,7 +13,8 @@ import {
   MoreVertical,
   Filter,
   UploadCloud,
-  Edit2
+  Edit2,
+  Download
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -77,6 +78,62 @@ export const ProductManagement: React.FC = () => {
       await adminService.deleteProduct(id);
       fetchProducts();
     }
+  };
+
+  const handleExportExcel = () => {
+    if (products.length === 0) {
+      alert('Não há produtos para exportar.');
+      return;
+    }
+
+    const headers = [
+      'ID',
+      'Nome',
+      'Preço (R$)',
+      'Categoria',
+      'Tamanhos',
+      'Personalizável',
+      'Descrição',
+      'Status (Esgotado)',
+      'Total de Vendas',
+      'Faturamento Total (R$)',
+      'Imagens'
+    ];
+
+    const rows = products.map(p => {
+      const tamanhos = Array.isArray(p.sizes) ? p.sizes.join(', ') : (Array.isArray(p.tamanhos) ? p.tamanhos.join(', ') : '');
+      const imagens = Array.isArray(p.images) ? p.images.join(', ') : (Array.isArray(p.imagens) ? p.imagens.join(', ') : '');
+      return [
+        p.id || '',
+        p.name || '',
+        p.price || 0,
+        p.category || '',
+        tamanhos,
+        p.personalizable ? 'Sim' : 'Não',
+        p.description || '',
+        p.soldOut ? 'Esgotado' : 'Ativo',
+        p.salesCount || 0,
+        p.totalRevenue || 0,
+        imagens
+      ];
+    });
+
+    const csvContent = [
+      headers.join(';'),
+      ...rows.map(row => row.map(val => {
+        const cleanVal = String(val).replace(/"/g, '""');
+        return `"${cleanVal}"`;
+      }).join(';'))
+    ].join('\r\n');
+
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `produtos_torcida_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleToggleSoldOut = async (id: string, current: boolean) => {
@@ -155,6 +212,14 @@ export const ProductManagement: React.FC = () => {
             >
               <UploadCloud size={18} className={importing ? 'animate-bounce' : ''} />
               <span className="text-sm font-bold">{importing ? 'Importando...' : 'Importar Produtos'}</span>
+            </button>
+            <button
+              onClick={handleExportExcel}
+              className="flex items-center gap-2 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-500 px-4 py-2 rounded-xl transition-colors"
+              title="Exportar Produtos para Excel"
+            >
+              <Download size={18} />
+              <span className="text-sm font-bold">Exportar Excel</span>
             </button>
             <div className="relative">
               <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 w-4 h-4" />
