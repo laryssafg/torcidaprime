@@ -97,12 +97,18 @@ export const ProductManagement: React.FC = () => {
       'Status (Esgotado)',
       'Total de Vendas',
       'Faturamento Total (R$)',
-      'Imagens'
+      'Foto Principal',
+      'Fotos Extras'
     ];
 
     const rows = products.map(p => {
       const tamanhos = Array.isArray(p.sizes) ? p.sizes.join(', ') : (Array.isArray(p.tamanhos) ? p.tamanhos.join(', ') : '');
-      const imagens = Array.isArray(p.images) ? p.images.join(', ') : (Array.isArray(p.imagens) ? p.imagens.join(', ') : '');
+      
+      // Obter array de imagens
+      const imgsArray = Array.isArray(p.images) ? p.images : (Array.isArray(p.imagens) ? p.imagens : []);
+      const fotoPrincipal = imgsArray[0] || '';
+      const fotosExtras = imgsArray.slice(1).join(', ');
+
       return [
         p.id || '',
         p.name || '',
@@ -114,7 +120,8 @@ export const ProductManagement: React.FC = () => {
         p.soldOut ? 'Esgotado' : 'Ativo',
         p.salesCount || 0,
         p.totalRevenue || 0,
-        imagens
+        fotoPrincipal,
+        fotosExtras
       ];
     });
 
