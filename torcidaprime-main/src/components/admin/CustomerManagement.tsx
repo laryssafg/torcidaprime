@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { adminService } from '../../services/adminService';
 import { User, Phone, Mail, MapPin, ShoppingBag, Search, ExternalLink, Trash2 } from 'lucide-react';
-import { Timestamp } from 'firebase/firestore';
+
 import { safeLower, safeText } from '../../utils';
 
 export const CustomerManagement: React.FC = () => {
@@ -49,13 +49,12 @@ export const CustomerManagement: React.FC = () => {
           const valor = Number(valorRaw);
           customer.totalSpent += (isNaN(valor) ? 0 : valor);
           
-          // Keep newest order date
-          const currentTimestamp = record.criadoEm || record.date || record.createdAt;
-          if (currentTimestamp instanceof Timestamp) {
-            const currentMillis = currentTimestamp.toMillis();
-            const lastMillis = customer.lastOrder instanceof Timestamp ? customer.lastOrder.toMillis() : 0;
-            if (currentMillis > lastMillis) {
-              customer.lastOrder = currentTimestamp;
+          const currentDateStr = record.criadoEm || record.date || record.createdAt;
+          if (currentDateStr) {
+            const currentTime = new Date(typeof currentDateStr === 'object' && typeof currentDateStr.toDate === 'function' ? currentDateStr.toDate() : currentDateStr).getTime();
+            const lastTime = customer.lastOrder ? new Date(typeof customer.lastOrder === 'object' && typeof customer.lastOrder.toDate === 'function' ? customer.lastOrder.toDate() : customer.lastOrder).getTime() : 0;
+            if (currentTime > lastTime) {
+              customer.lastOrder = currentDateStr;
               customer.lastAddress = record.endereco || record.address || customer.lastAddress;
             }
           }

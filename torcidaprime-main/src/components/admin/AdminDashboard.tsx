@@ -19,7 +19,7 @@ import {
   Area
 } from 'recharts';
 import { motion } from 'motion/react';
-import { Timestamp } from 'firebase/firestore';
+
 
 import { getProductMedia, safeLower, safeText } from '../../utils';
 
@@ -52,7 +52,7 @@ export const AdminDashboard: React.FC = () => {
 
   const getSaleDate = (sale: any) => {
     const rawDate = sale.date || sale.criadoEm || sale.createdAt;
-    if (rawDate instanceof Timestamp) return rawDate.toDate();
+    if (rawDate && typeof rawDate === 'object' && typeof rawDate.toDate === 'function') return rawDate.toDate();
     if (rawDate && typeof rawDate.toDate === 'function') return rawDate.toDate();
     if (typeof rawDate === 'string' || typeof rawDate === 'number') return new Date(rawDate);
     return new Date();

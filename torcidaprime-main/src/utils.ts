@@ -44,15 +44,15 @@ export const normalizeProduct = (docId: string, data: any): Product => {
   const nome = safeText(data.nome || data.name);
   const price = Number(data.preco || data.price || 0);
 
-  const images = Array.isArray(data.imagens)
+  const images = (Array.isArray(data.imagens) && data.imagens.length > 0)
     ? data.imagens
-    : Array.isArray(data.images)
+    : (Array.isArray(data.images) && data.images.length > 0)
       ? data.images
       : [];
 
-  const sizes = Array.isArray(data.tamanhos)
+  const sizes = (Array.isArray(data.tamanhos) && data.tamanhos.length > 0)
     ? data.tamanhos
-    : Array.isArray(data.sizes)
+    : (Array.isArray(data.sizes) && data.sizes.length > 0)
       ? data.sizes
       : [];
 
@@ -74,10 +74,10 @@ export const normalizeProduct = (docId: string, data: any): Product => {
 export const getProductMedia = (product: Product | any): string[] => {
   if (!product) return ["https://placehold.co/600x800/262626/white?text=Sem+Imagem"];
   
-  const imgs = Array.isArray(product.imagens) && product.imagens.length > 0 
-    ? product.imagens 
-    : Array.isArray(product.images) && product.images.length > 0 
-      ? product.images 
+  const imgs = (Array.isArray(product.imagens) && product.imagens.length > 0)
+    ? product.imagens
+    : (Array.isArray(product.images) && product.images.length > 0)
+      ? product.images
       : [];
   
   if (imgs.length === 0) return ["https://placehold.co/600x800/262626/white?text=Sem+Imagem"];
@@ -153,6 +153,7 @@ export const getAutoDescription = (_productName: string, category: string) => {
   const base = "Produto selecionado para quem busca estilo, conforto e paixão pelo esporte. Ideal para torcer, colecionar ou usar no dia a dia.";
   
   if (cat.includes('brasil')) return `Mostre seu amor pela seleção! ${base} Design autêntico com a energia do futebol brasileiro.`;
+  if (cat.includes('seleções') || cat.includes('selecoes')) return `Vista as cores das maiores nações do futebol! ${base} Mantos de qualidade superior para torcer com estilo.`;
   if (cat.includes('infantil')) return `Conforto e estilo para os pequenos torcedores! ${base} Feito com tecidos leves para garantir a diversão em todos os lances.`;
   if (cat.includes('nba')) return `Das quadras para o seu estilo! ${base} Regata premium com detalhes bordados e máxima respirabilidade.`;
   if (cat.includes('retro')) return `Reviva grandes momentos! ${base} Edição especial nostálgica para reviver a história do seu time de coração.`;

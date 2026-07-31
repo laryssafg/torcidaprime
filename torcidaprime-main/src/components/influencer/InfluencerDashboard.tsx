@@ -23,12 +23,12 @@ export const InfluencerDashboard: React.FC<InfluencerDashboardProps> = ({ influe
     for (const value of possibleDates) {
       if (!value) continue;
 
-      // Firebase Timestamp
+      // Object with toDate method
       if (typeof value.toDate === "function") {
         return value.toDate();
       }
 
-      // Firestore timestamp object
+      // Raw timestamp object with seconds
       if (value.seconds) {
         return new Date(value.seconds * 1000);
       }

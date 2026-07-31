@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { signOut } from 'firebase/auth';
-import { auth } from '../../lib/firebase';
+import { supabase } from '../../lib/supabase';
 import { 
   LayoutDashboard, 
   PlusCircle, 
@@ -29,8 +28,15 @@ type Tab = 'dashboard' | 'sales' | 'customers' | 'new-product' | 'products' | 'c
 export const AdminPortal: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [currentUserEmail, setCurrentUserEmail] = useState<string>('');
 
-  const handleLogout = () => signOut(auth);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.email) setCurrentUserEmail(user.email);
+    });
+  }, []);
+
+  const handleLogout = () => supabase.auth.signOut();
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -114,7 +120,7 @@ export const AdminPortal: React.FC = () => {
             <div className="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center border border-neutral-700">
               <Settings size={14} className="text-neutral-400" />
             </div>
-            <span className="text-sm font-medium">{auth.currentUser?.email}</span>
+            <span className="text-sm font-medium">{currentUserEmail}</span>
           </div>
         </header>
 

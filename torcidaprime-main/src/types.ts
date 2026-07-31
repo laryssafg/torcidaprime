@@ -1,5 +1,6 @@
 export enum Category {
   BRASIL = 'Brasil Copa',
+  SELECOES = 'Seleções',
   CLUBES_BR = 'Clubes Brasileiros',
   CLUBES_INT = 'Clubes Internacionais',
   INFANTIL = 'Infantil',
@@ -9,6 +10,7 @@ export enum Category {
   FEMININO = 'Feminino',
   RETRO = 'Retrô',
   CONJUNTO = 'Conjunto',
+  JAQUETA = 'Jaqueta',
   CORTA_VENTO = 'Corta Vento'
 }
 

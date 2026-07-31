@@ -2,15 +2,13 @@ import express from 'express';
 import cors from 'cors';
 import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
 import dotenv from 'dotenv';
-import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { readFileSync } from 'fs';
+import { createClient } from '@supabase/supabase-js';
 
 dotenv.config();
 
-const firebaseConfig = JSON.parse(readFileSync(new URL('./firebase-applet-config.json', import.meta.url)));
-const firebaseApp = initializeApp(firebaseConfig);
-const db = getFirestore(firebaseApp);
+const supabaseUrl = process.env.SUPABASE_URL || 'https://emyhfscwudyiqnxplfal.supabase.co';
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const app = express();
 app.use(cors());
@@ -150,17 +148,23 @@ app.post('/api/payments/webhook', async (req, res) => {
       status:               orderStatus,
       mercadoPagoStatus:    status,
       mercadoPagoPaymentId: String(paymentId),
-      atualizadoEm:         serverTimestamp(),
+      atualizadoEm:         new Date().toISOString(),
     };
 
     if (status === 'approved') {
-      updateData.pagoEm = serverTimestamp();
+      updateData.pagoEm = new Date().toISOString();
     }
 
-    const orderRef = doc(db, 'pedidos', orderId);
-    await updateDoc(orderRef, updateData);
+    const { data, error } = await supabase
+      .from('pedidos')
+      .update(updateData)
+      .eq('id', orderId);
 
-    console.log("Pedido atualizado para", orderStatus + ":", orderId);
+    if (error) {
+      console.error("Erro ao atualizar pedido no Supabase:", error);
+    } else {
+      console.log("Pedido atualizado para", orderStatus + ":", orderId);
+    }
   } catch (error) {
     console.error('ERRO NO PROCESSAMENTO DO WEBHOOK:', error);
   }

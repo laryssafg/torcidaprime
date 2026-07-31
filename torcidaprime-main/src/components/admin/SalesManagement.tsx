@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { adminService } from '../../services/adminService';
 import { formatCurrency, safeLower, safeText } from '../../utils';
 import { ShoppingCart, User, Calendar, Tag, Search, Filter, Package, Phone, Trash2, Truck, ChevronDown, ChevronUp } from 'lucide-react';
-import { Timestamp } from 'firebase/firestore';
+
 
 export const SalesManagement: React.FC = () => {
   const [sales, setSales] = useState<any[]>([]);
@@ -24,7 +24,7 @@ export const SalesManagement: React.FC = () => {
       order.dataPedido ||
       order.data;
     if (!rawDate) return new Date(0); // data desconhecida → epoch, não 'agora'
-    if (rawDate instanceof Timestamp) return rawDate.toDate();
+    if (rawDate && typeof rawDate === 'object' && typeof rawDate.toDate === 'function') return rawDate.toDate();
     if (rawDate && typeof rawDate.toDate === 'function') return rawDate.toDate();
     if (typeof rawDate === 'string' || typeof rawDate === 'number') return new Date(rawDate);
     return new Date(0);
@@ -33,7 +33,7 @@ export const SalesManagement: React.FC = () => {
   const getPaidDate = (order: any): Date | null => {
     const raw = order.pagoEm;
     if (!raw) return null;
-    if (raw instanceof Timestamp) return raw.toDate();
+    if (raw && typeof raw === 'object' && typeof raw.toDate === 'function') return raw.toDate();
     if (raw && typeof raw.toDate === 'function') return raw.toDate();
     if (typeof raw === 'string' || typeof raw === 'number') return new Date(raw);
     return null;

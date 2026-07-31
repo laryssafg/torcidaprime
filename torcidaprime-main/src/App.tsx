@@ -5,9 +5,7 @@
 
 import React, { useState, useEffect, useMemo, Component, ErrorInfo, ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
-import { auth, db } from './lib/firebase';
+import { supabase } from './lib/supabase';
 import { AdminLogin } from './components/admin/AdminLogin';
 import { AdminPortal } from './components/admin/AdminPortal';
 import { InfluencerLogin } from './components/influencer/InfluencerLogin';
@@ -82,15 +80,21 @@ export default function App() {
 }
 
 function AdminRoute() {
-  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [user, setUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      setUser(u);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user || null);
       setLoading(false);
     });
-    return () => unsubscribe();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   if (loading) return <div className="min-h-screen bg-black flex items-center justify-center"><div className="w-8 h-8 border-4 border-gold border-t-transparent rounded-full animate-spin"></div></div>;
@@ -142,34 +146,49 @@ function Storefront() {
 
   // --- External Data Sync (Real-time) ---
   useEffect(() => {
-    // Products Listener
-    const unsubscribeProducts = onSnapshot(collection(db, 'produtos'), (snapshot) => {
-      const rawProds = snapshot.docs.map(doc => normalizeProduct(doc.id, doc.data()));
-
+    const fetchProducts = async () => {
+      const { data, error } = await supabase.from('produtos').select('*').order('name');
+      if (error) {
+        console.error("Error fetching products:", error);
+        return;
+      }
+      const rawProds = (data || []).map(item => normalizeProduct(item.id, item));
       const prods = rawProds.filter(p => {
         const isValid = p.name && !Number.isNaN(p.price) && p.price > 0 && p.active !== false;
-        if (!isValid) {
-          console.warn("Produto inválido ignorado:", p);
-        }
         return isValid;
       });
-
       setDbProducts(prods);
-    }, (error) => {
-      console.error("Error fetching real-time products:", error);
-    });
+    };
 
-    // Coupons Listener
-    const unsubscribeCoupons = onSnapshot(collection(db, 'cupons'), (snapshot) => {
-      const cups = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setDbCoupons(cups);
-    }, (error) => {
-      console.error("Error fetching real-time coupons:", error);
-    });
+    const fetchCoupons = async () => {
+      const { data, error } = await supabase.from('cupons').select('*');
+      if (error) {
+        console.error("Error fetching coupons:", error);
+        return;
+      }
+      setDbCoupons(data || []);
+    };
+
+    fetchProducts();
+    fetchCoupons();
+
+    const productChannel = supabase
+      .channel('public:produtos')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'produtos' }, () => {
+        fetchProducts();
+      })
+      .subscribe();
+
+    const couponChannel = supabase
+      .channel('public:cupons')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cupons' }, () => {
+        fetchCoupons();
+      })
+      .subscribe();
 
     return () => {
-      unsubscribeProducts();
-      unsubscribeCoupons();
+      supabase.removeChannel(productChannel);
+      supabase.removeChannel(couponChannel);
     };
   }, []);
 
@@ -178,7 +197,7 @@ function Storefront() {
     setVisibleCount(20);
   }, [selectedCategory, searchQuery, priceFilter]);
 
-  // Prioritize dynamic products from Firebase
+  // Prioritize dynamic products from Supabase
   const allProducts = useMemo(() => [...dbProducts, ...PRODUCTS], [dbProducts]);
 
   // --- Persistence ---
