@@ -10,6 +10,13 @@ export const SalesManagement: React.FC = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // Helper to get local ISO string for datetime-local input
+  const getLocalDateTimeString = () => {
+    const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+    const localISOTime = (new Date(Date.now() - tzoffset)).toISOString().slice(0, 16);
+    return localISOTime;
+  };
+
   // States for the Manual Sale Modal
   const [availableProducts, setAvailableProducts] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -23,6 +30,7 @@ export const SalesManagement: React.FC = () => {
   const [shippingValue, setShippingValue] = useState(0);
   const [shippingObservation, setShippingObservation] = useState('');
   const [couponCode, setCouponCode] = useState('');
+  const [saleDateTime, setSaleDateTime] = useState(getLocalDateTimeString());
   const [items, setItems] = useState<any[]>([
     {
       productId: '',
@@ -279,7 +287,8 @@ export const SalesManagement: React.FC = () => {
         formaPagamento: paymentMethod,
         status: status,
         desconto: Number(discount || 0),
-        cupom: couponCode.trim() || null
+        cupom: couponCode.trim() || null,
+        criadoEm: saleDateTime ? new Date(saleDateTime).toISOString() : new Date().toISOString()
       };
 
       await adminService.createOrder(newOrder);
@@ -295,6 +304,7 @@ export const SalesManagement: React.FC = () => {
       setShippingValue(0);
       setShippingObservation('');
       setCouponCode('');
+      setSaleDateTime(getLocalDateTimeString());
       setItems([{
         productId: '',
         productName: '',
@@ -616,6 +626,16 @@ export const SalesManagement: React.FC = () => {
                       value={couponCode}
                       onChange={e => setCouponCode(e.target.value)}
                       placeholder="Ex: PARCEIRO10"
+                      className="w-full bg-black border border-neutral-800 rounded-xl py-2 px-3 text-sm focus:outline-none focus:border-gold transition-colors text-white"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-neutral-400 uppercase">Data e Hora da Venda</label>
+                    <input
+                      type="datetime-local"
+                      value={saleDateTime}
+                      onChange={e => setSaleDateTime(e.target.value)}
                       className="w-full bg-black border border-neutral-800 rounded-xl py-2 px-3 text-sm focus:outline-none focus:border-gold transition-colors text-white"
                     />
                   </div>
